@@ -4,6 +4,8 @@
 
 # ସୁलेখk · Sulekhak Indic Phonetic Keyboard
 
+## type your way
+
 **Type in your own language with plain English letters. Odia comes first.** Say it the way it sounds: `buRhaaTi kahilaa, "baagZdebiinku namaskaar"` → ବୁଢ଼ାଟି କହିଲା, "ବାଗ୍‌ଦେବୀଙ୍କୁ ନମସ୍କାର". A small box offers real words, Sulekhak learns the ones you pick, and after each word it suggests the next one.
 
 ## 🗣️ Languages and writing styles
@@ -13,7 +15,7 @@
 | **ଓଡ଼ିଆ** | **Odia** | The main language. Smart word choices (vowels optional), conjuncts, next-word suggestions, and the rare letters ୠ ଌ ୡ ଽ ୰ |
 | **देवनागरी** | **Devanagari** | Hindi and other languages written in Devanagari, with a choice of full conjuncts (कुण्डल) or anusvara ं |
 | **मराठी** | **Marathi** (Devanagari) | Switch the **Marathi ळ** option on and `kuNDaLa` gives **कुण्डळ**; with it off, **कुण्डल** |
-| **অসমীয়া** | **Assamese** | Assamese letters **ৰ** and **ৱ**, kept apart from the Bangla ra and ba |
+| **অসমীয়া** | **Assamese** | Assamese letters **ৰ** and **ৱ** (`byavahar` → ব্যৱহাৰ), kept apart from the Bangla ra and ba. Wherever ত্ is possible, the **ৎ** spelling is offered right beside it (`jagat` → জগত · জগৎ) |
 | **বাংলা** | **Bangla** | Bangla script from the same keys and the same dictionary |
 | **English** | Mixed typing | Every choice list also offers what you typed, so English words sit between Odia words |
 | **IPA · extIPA · IAST** | Phonetic symbols (web, Mac, Windows) | Type a key, then pick the symbol that looks like it |
@@ -23,7 +25,9 @@ The same word in each script: `kuNDaLa` → କୁଣ୍ଡଳ (Odia) · कु�
 <p align="center"><img src="docs/img/languages.png" alt="Odia, Devanagari, Assamese, Bangla, English and phonetic symbols" width="100%"></p>
 
 ## ✨ ZWNJ done right
-Type **Z** after the letter to get a halant followed by a zero-width non-joiner, so the letters stay apart the way Odia is written. `Z` is halant + ZWNJ, `z` is ZWNJ alone, and the backtick is the halant alone. In a word with a Z the choices run: the ZWNJ spelling, what you typed, the same without ZWNJ, then every other choice. `bagdebi` also finds **ବାଗ୍‌ଦେବୀ** straight away.
+Type **Z** after the letter to get a halant followed by a zero-width non-joiner, so the letters stay apart the way Odia is written. `Z` is halant + ZWNJ, `z` is ZWNJ alone (hold `z` on a phone or in the key guide for **ZWJ**), and the backtick is the halant alone. In a word with a Z the choices run: the ZWNJ spelling, what you typed, the same without ZWNJ, the same with ZWJ, then every other choice. `bagdebi` also finds **ବାଗ୍‌ଦେବୀ** straight away.
+
+In the choice list the three look different on purpose: halant + ZWNJ is shown as **୍ + ┊**, halant + ZWJ as **୍ + [**, and a plain halant is just **୍**.
 
 | ZWNJ (✓) | Without ZWNJ (✗) |
 |---|---|
@@ -35,7 +39,16 @@ Type **Z** after the letter to get a halant followed by a zero-width non-joiner,
 | ଉଦ୍‌ବେଗ | ଉଦ୍ବେଗ |
 | ଉଦ୍‌ବିଗ୍ନ | ଉଦ୍ବିଗ୍ନ |
 
+Both spellings are valid, and both are in the dictionary: ବାଙ୍‌ମୟ / ବାଙ୍ମୟ · ତତ୍‌ସମ / ତତ୍ସମ · ତଦ୍‌ଭବ / ତଦ୍ଭବ.
+
 <p align="center"><img src="docs/img/zwnj.png" alt="ZWNJ spellings compared with the spellings without ZWNJ" width="100%"></p>
+
+Want the ya-phala form of ର୍ୟ? A ZWJ between the ra and the halant gives **ର‍୍ୟ** (ର + ZWJ + ୍ + ୟ).
+
+## ଡ ଢ ଡ଼ ଢ଼
+`D` ଡ · `Dh` ଢ · `R` ଡ଼ (U+0B5C) · `Rh` ଢ଼ (U+0B5D). Type `>` after `D` or `Dh` for the nukta spelling (ଡ + ଼). Both look the same on screen.
+
+<p align="center"><img src="docs/img/dtab.png" alt="The four letters ଡ ଢ ଡ଼ ଢ଼ and the keys that type them" width="100%"></p>
 
 ## ⬇️ Download
 
@@ -83,7 +96,7 @@ Type Odia the way it sounds, in English letters. A small box shows choices:
 | Enter | accept it with a space; press again for a new line |
 | ↑ ↓ Tab | move the highlight · ← → change page |
 | Backspace | removes one letter · Esc cancels |
-| Z / z / ` (backtick) | halant + ZWNJ (୍‌) / ZWNJ alone / halant (୍) |
+| Z / z / ` (backtick) | halant + ZWNJ (୍‌) / ZWNJ alone (hold for ZWJ) / halant (୍) |
 | > | nukta (଼) for ଡ଼ ଢ଼ |
 
 Good to know
@@ -92,6 +105,8 @@ Good to know
 - 🔤 Abbreviations. `pa` → ପି.ଏ. (also PA, P.A., ପିଏ)
 - ୟ vs ଯ: `kaifiyat` → କୈଫିୟତ୍. At the start of a word `y` gives ଯ (`yoga` → ଯୋଗ).
 - Z after a word (`ghar` + Shift+Z) gives ଘର୍‌ (halant + ZWNJ) first, not a guess.
+- 🔤 Whatever you typed is always choice 2, in every language, so the plain English word is one number key away.
+- ⌨️ The on-screen keyboard changes its key letters with the language you pick (Odia, Devanagari, Assamese, Bangla, Phonetic).
 - 📒 Add your own words in `~/Library/Application Support/LekhaniOdia/lexicon.tsv` (roman⇥odia).
 
 ## 🌐 Try it in the browser
