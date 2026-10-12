@@ -1,0 +1,96 @@
+name: Build Android and Windows apps
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - '.github/workflows/build-apps.yml'
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack sources
+        run: tar xzf apps/src.tar.gz -C apps
+      - name: Get the language data from the live site
+        run: |
+          mkdir -p data
+          for f in cfg lex rom big clus syl_uni syl_bi syl_chan; do
+            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/$f.gz" -o "data/$f.gz"
+          done
+          ls -la data
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Stage the engine and data as app assets
+        run: |
+          A=apps/android/app/src/main/assets
+          mkdir -p "$A/sulekhak"
+          cp apps/shared/ime.html apps/shared/ime.js apps/shared/engine.js apps/shared/sulekhak.js "$A/"
+          gunzip -c apps/shared/skel.dat.gz > "$A/skel.dat"
+          gunzip -c data/cfg.gz > "$A/sulekhak/cfg.json"
+          for f in lex rom big clus syl_uni syl_bi syl_chan; do gunzip -c "data/$f.gz" > "$A/sulekhak/$f.txt"; done
+          du -sh "$A"
+      - name: Build the APK
+        run: gradle -p apps/android assembleDebug --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sulekhak-Android-apk
+          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack sources
+        shell: bash
+        run: tar xzf apps/src.tar.gz -C apps
+      - name: Get the language data from the live site
+        shell: bash
+        run: |
+          mkdir -p apps/windows/res
+          for f in cfg lex rom big clus syl_uni syl_bi syl_chan; do
+            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/$f.gz" -o "apps/windows/res/$f.gz"
+          done
+          cp apps/shared/ime.html apps/shared/ime.js apps/shared/engine.js apps/shared/sulekhak.js apps/shared/skel.dat.gz apps/shared/phon-data.js apps/shared/phon-core.js apps/windows/res/
+          ls -la apps/windows/res
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build the exe
+        run: dotnet publish apps/windows/Sulekhak.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sulekhak-Windows-exe
+          path: out/Sulekhak.exe
+
+  release:
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+      - name: Publish the downloads on the Releases page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir out
+          cp dl/Sulekhak-Android-apk/app-debug.apk out/Sulekhak-Android.apk
+          cp dl/Sulekhak-Windows-exe/Sulekhak.exe out/Sulekhak-Windows.exe
+          gh release delete latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
+          gh release create latest out/Sulekhak-Android.apk out/Sulekhak-Windows.exe --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "Sulekhak Phonetic Keyboard: Android and Windows" \
+            --notes "Sulekhak-Android.apk: the Android keyboard (install, open Sulekhak, switch it on). Sulekhak-Windows.exe: the Windows tray keyboard, one file, no installer. Mac and web: see the README."
