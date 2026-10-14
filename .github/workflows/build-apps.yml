@@ -117,8 +117,37 @@ jobs:
           name: Sulekhak-Mac-dmgs
           path: macsrc/OdiaPhonetic-Mac/dist/*.dmg
 
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack the iPad and iPhone keyboard source
+        run: tar xzf apps/ios-src.tar.gz -C apps
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build the app and keyboard (unsigned, for AltStore, SideStore or Sideloadly)
+        run: |
+          cd apps/ios
+          xcodegen generate
+          xcodebuild -project Sulekhak.xcodeproj -scheme Sulekhak -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" build
+      - name: Make the IPA
+        run: |
+          cd apps/ios
+          rm -rf Payload && mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/Sulekhak.app Payload/
+          ls Payload/Sulekhak.app/PlugIns
+          zip -qry Sulekhak-iPad.ipa Payload
+          ls -la Sulekhak-iPad.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sulekhak-iPad-ipa
+          path: apps/ios/Sulekhak-iPad.ipa
+
   release:
-    needs: [android, windows, mac]
+    needs: [android, windows, mac, ios]
+    if: ${{ !cancelled() && needs.android.result == 'success' && needs.windows.result == 'success' && needs.mac.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -135,6 +164,7 @@ jobs:
           for d in dl/win-*; do cp "$d"/*.exe out/; done
           for f in out/Sulekhak-*.exe; do :; done
           cp dl/Sulekhak-Mac-dmgs/*.dmg out/
+          [ -d dl/Sulekhak-iPad-ipa ] && cp dl/Sulekhak-iPad-ipa/*.ipa out/ || true
           # the all-in-one Windows file keeps its old name
           [ -f out/Sulekhak.exe ] && mv out/Sulekhak.exe out/Sulekhak-Windows.exe
           for e in Odia Devanagari Bangla Assamese Phonetic; do [ -f "out/Sulekhak-$e.exe" ] && mv "out/Sulekhak-$e.exe" "out/Sulekhak-Windows-$e.exe"; done
@@ -142,4 +172,4 @@ jobs:
           gh release delete latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
           gh release create latest out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
             --title "Sulekhak Phonetic Keyboard: Mac, Windows and Android" \
-            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-<language>-<version>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
+            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-<language>-<version>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). iPad and iPhone: Sulekhak-iPad.ipa (install it with AltStore, SideStore or Sideloadly, see apps/ios/README.md; the web app for iPad needs no install file). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
