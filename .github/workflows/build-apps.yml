@@ -3,6 +3,10 @@ name: Build the apps (Android, Windows, Mac DMGs)
 permissions:
   contents: read
 
+concurrency:
+  group: build-apps
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -172,4 +176,4 @@ jobs:
           gh release delete latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
           gh release create latest out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
             --title "Sulekhak Phonetic Keyboard: Mac, Windows and Android" \
-            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-<language>-<version>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). iPad and iPhone: Sulekhak-iPad.ipa (install it with AltStore, SideStore or Sideloadly, see apps/ios/README.md; the web app for iPad needs no install file). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
+            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-<language>-<version>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). iPad and iPhone: Sulekhak-iPad.ipa (install it with AltStore, SideStore or Sideloadly, see docs/ios.md; the web app for iPad needs no install file). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
