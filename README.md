@@ -19,6 +19,8 @@
 | **বাংলা** | **Bangla** | Bangla script from the same keys and the same dictionary |
 | **English** | Mixed typing | Every choice list also offers what you typed, so English words sit between Odia words |
 | **IPA · extIPA · IAST** | Phonetic symbols (web, Mac, Windows) | Type a key, then pick the symbol that looks like it |
+| **iPad and iPhone** | | | | **Web app, no install file:** [sulekhak-ipad](https://sai-sudeep.github.io/assets/tools/sulekhak-ipad/) (Safari, Share, Add to Home Screen, works offline, no security prompts). **System keyboard for every app:** [Sulekhak-iPad.ipa](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-iPad.ipa), installed with AltStore, SideStore or Sideloadly ([how](docs/ios.md)) |
+| **Keyman** (any phone, tablet or computer with Keyman) | [keyman/sulekhak_all.kmp](keyman/sulekhak_all.kmp) (Odia, Devanagari, Assamese, Bangla) | same file | same file | one file per language in [keyman/](keyman/) ([how to type](keyman/README.md)) |
 
 The same word in each script: `kuNDaLa` → କୁଣ୍ଡଳ (Odia) · कुण्डल (Devanagari) · कुण्डळ (Marathi option) · কুণ্ডল (Bangla)
 
