@@ -1,4 +1,4 @@
-name: Build Android and Windows apps
+name: Build the apps (Android, Windows, Mac DMGs)
 
 permissions:
   contents: read
@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - 'apps/**'
+      - 'Sulekhak-Mac.zip'
       - '.github/workflows/build-apps.yml'
   workflow_dispatch:
 
@@ -41,15 +42,35 @@ jobs:
           gunzip -c data/cfg.gz > "$A/sulekhak/cfg.json"
           for f in lex rom big clus syl_uni syl_bi syl_chan; do gunzip -c "data/$f.gz" > "$A/sulekhak/$f.txt"; done
           du -sh "$A"
-      - name: Build the APK
+      - name: Build the APKs (all-in-one, Odia, Devanagari, Assamese, Bangla)
         run: gradle -p apps/android assembleDebug --no-daemon --stacktrace
+      - name: Collect the APKs
+        run: |
+          mkdir -p apk
+          cd apps/android/app/build/outputs/apk
+          cp allinone/debug/*.apk "$GITHUB_WORKSPACE/apk/Sulekhak-Android.apk"
+          for e in odia devanagari assamese bangla; do
+            E="$(echo ${e:0:1} | tr a-z A-Z)${e:1}"
+            cp "$e/debug/"*.apk "$GITHUB_WORKSPACE/apk/Sulekhak-Android-$E.apk"
+          done
+          ls -la "$GITHUB_WORKSPACE/apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: Sulekhak-Android-apk
-          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          name: Sulekhak-Android-apks
+          path: apk/*.apk
 
   windows:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "",            num: "",  file: "Sulekhak" }
+          - { name: "Odia",        num: "0", file: "Sulekhak-Odia" }
+          - { name: "Devanagari",  num: "1", file: "Sulekhak-Devanagari" }
+          - { name: "Bangla",      num: "2", file: "Sulekhak-Bangla" }
+          - { name: "Assamese",    num: "5", file: "Sulekhak-Assamese" }
+          - { name: "Phonetic",    num: "4", file: "Sulekhak-Phonetic" }
     steps:
       - uses: actions/checkout@v4
       - name: Unpack sources
@@ -63,19 +84,41 @@ jobs:
             curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/$f.gz" -o "apps/windows/res/$f.gz"
           done
           cp apps/shared/ime.html apps/shared/ime.js apps/shared/engine.js apps/shared/sulekhak.js apps/shared/skel.dat.gz apps/shared/phon-data.js apps/shared/phon-core.js apps/windows/res/
+          cp apps/shared/osk.html apps/shared/kb3d.js apps/windows/oskres/
           ls -la apps/windows/res
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
       - name: Build the exe
-        run: dotnet publish apps/windows/Sulekhak.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
+        shell: bash
+        run: |
+          EXTRA=""
+          if [ -n "${{ matrix.num }}" ]; then EXTRA="-p:EditionNum=${{ matrix.num }} -p:EditionName=${{ matrix.name }}"; fi
+          dotnet publish apps/windows/Sulekhak.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true $EXTRA -o out
+          ls out
       - uses: actions/upload-artifact@v4
         with:
-          name: Sulekhak-Windows-exe
-          path: out/Sulekhak.exe
+          name: win-${{ matrix.file }}
+          path: out/${{ matrix.file }}.exe
+
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack the Mac source
+        run: unzip -q Sulekhak-Mac.zip -d macsrc
+      - name: Build the six DMGs (all-in-one, Odia, Devanagari, Assamese, Bangla, Phonetic)
+        run: |
+          cd macsrc/OdiaPhonetic-Mac
+          bash build.sh everything --dmg
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sulekhak-Mac-dmgs
+          path: macsrc/OdiaPhonetic-Mac/dist/*.dmg
 
   release:
-    needs: [android, windows]
+    needs: [android, windows, mac]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -88,9 +131,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir out
-          cp dl/Sulekhak-Android-apk/app-debug.apk out/Sulekhak-Android.apk
-          cp dl/Sulekhak-Windows-exe/Sulekhak.exe out/Sulekhak-Windows.exe
+          cp dl/Sulekhak-Android-apks/*.apk out/
+          for d in dl/win-*; do cp "$d"/*.exe out/; done
+          for f in out/Sulekhak-*.exe; do :; done
+          cp dl/Sulekhak-Mac-dmgs/*.dmg out/
+          # the all-in-one Windows file keeps its old name
+          [ -f out/Sulekhak.exe ] && mv out/Sulekhak.exe out/Sulekhak-Windows.exe
+          for e in Odia Devanagari Bangla Assamese Phonetic; do [ -f "out/Sulekhak-$e.exe" ] && mv "out/Sulekhak-$e.exe" "out/Sulekhak-Windows-$e.exe"; done
+          ls -la out
           gh release delete latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
-          gh release create latest out/Sulekhak-Android.apk out/Sulekhak-Windows.exe --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
-            --title "Sulekhak Phonetic Keyboard: Android and Windows" \
-            --notes "Sulekhak-Android.apk: the Android keyboard (install, open Sulekhak, switch it on). Sulekhak-Windows.exe: the Windows tray keyboard, one file, no installer. Mac and web: see the README."
+          gh release create latest out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "Sulekhak Phonetic Keyboard: Mac, Windows and Android" \
+            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-<language>-<version>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
