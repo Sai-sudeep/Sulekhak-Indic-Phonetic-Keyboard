@@ -52,14 +52,19 @@ Want the ya-phala form of ର୍ୟ? A ZWJ between the ra and the halant gives *
 
 ## ⬇️ Download
 
-| Platform | Download | |
-|---|---|---|
-| 🍎 **Mac** | [**Sulekhak-Mac.zip**](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/raw/main/Sulekhak-Mac.zip) | A real Mac input method with next-word suggestions (also on the Touch Bar, if your Mac has one) and a 3D on-screen keyboard. [Install in 3 steps](#-install-on-a-mac-in-3-steps) |
-| 🪟 **Windows** | [**Sulekhak-Windows.exe**](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Windows.exe) | One file, runs from the tray, no installer. [Details](#-windows-and--android) |
-| 🤖 **Android** | [**Sulekhak-Android.apk**](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Android.apk) | A keyboard app for your phone. [Details](#-windows-and--android) |
-| 🌐 **Web** | [**Open the typist**](https://sai-sudeep.github.io/assets/tools/sulekhak.html) | Nothing to install. Works on phones and tablets too |
+Every platform comes as the **all-in-one** (Odia first, then Devanagari, Assamese, Bangla and Phonetic IPA) and as a **separate keyboard for each language**. Install only the language you write, or the all-in-one.
 
-All downloads are on the [Releases page](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest) (Windows and Android) and in this repository (Mac). The Android and Windows files are built by GitHub from the source in the `apps` folder every time it changes.
+| | 🍎 Mac (DMG) | 🪟 Windows | 🤖 Android | 🌐 Web |
+|---|---|---|---|---|
+| **All-in-one** | [Sulekhak-All-in-one](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest) · or [Sulekhak-Mac.zip](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/raw/main/Sulekhak-Mac.zip) (builds on your Mac) | [Sulekhak-Windows.exe](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Windows.exe) | [Sulekhak-Android.apk](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Android.apk) | [sulekhak.html](https://sai-sudeep.github.io/assets/tools/sulekhak.html) |
+| **ଓଡ଼ିଆ Odia** | Sulekhak-Odia-<version>.dmg | Sulekhak-Windows-Odia.exe | Sulekhak-Android-Odia.apk | [sulekhak-odia.html](https://sai-sudeep.github.io/assets/tools/sulekhak-odia.html) |
+| **देवनागरी Devanagari** (Marathi option) | Sulekhak-Devanagari-<version>.dmg | Sulekhak-Windows-Devanagari.exe | Sulekhak-Android-Devanagari.apk | [sulekhak-devanagari.html](https://sai-sudeep.github.io/assets/tools/sulekhak-devanagari.html) |
+| **অসমীয়া Assamese** | Sulekhak-Assamese-<version>.dmg | Sulekhak-Windows-Assamese.exe | Sulekhak-Android-Assamese.apk | [sulekhak-assamese.html](https://sai-sudeep.github.io/assets/tools/sulekhak-assamese.html) |
+| **বাংলা Bangla** | Sulekhak-Bangla-<version>.dmg | Sulekhak-Windows-Bangla.exe | Sulekhak-Android-Bangla.apk | [sulekhak-bangla.html](https://sai-sudeep.github.io/assets/tools/sulekhak-bangla.html) |
+| **IPA · extIPA · IAST** | Sulekhak-Phonetic-IPA-<version>.dmg | Sulekhak-Windows-Phonetic.exe | (not on Android yet) | [sulekhak-phonetic.html](https://sai-sudeep.github.io/assets/tools/sulekhak-phonetic.html) |
+| **English** | (use the all-in-one) | (use the all-in-one) | (use the all-in-one) | [sulekhak-english.html](https://sai-sudeep.github.io/assets/tools/sulekhak-english.html) |
+
+All the DMGs, EXEs and APKs are on the [Releases page](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest); GitHub builds them from the source in this repository. A **DMG** holds the keyboard, an *Install* file (double-click it; the first time right-click → Open) and an *Uninstall* file. Editions are separate programs with their own names, so you can have several side by side (they share the Control+Option+K hot key and your learned words). The Mac DMGs, like the rest of the Mac build, are not notarised by Apple.
 
 ## 📸 See it
 
@@ -79,6 +84,12 @@ Installing again later updates the keyboard in place and keeps your own words.
 Output script: from the input-source menu, or Control+Option+1 Odia, 2 Devanagari, 3 Bangla, 6 Assamese, 7 Phonetic (IPA, extIPA, IAST). Control+Option+4 switches the Marathi ळ option on and off.
 
 **3D on-screen keyboard.** The input menu has "3D keyboard: show / hide" (also Control+Option+K). It is the same keyboard as in the web tool, drawn as a Mac, Windows, iPad or Android keyboard, and clicking its keys types through the input method. macOS asks once for the Accessibility permission, which it needs to accept key presses from an on-screen keyboard. Make it bigger or smaller with the − and + buttons, **Control+Option+=** and **Control+Option+-**, or the matching input-menu items.
+
+**Hover to see (Phonetic keyboard).** Point at a key on the 3D keyboard and a ring of bevelled tiles opens around it, one tile for every IPA, extIPA or IAST symbol that looks like that key. The strongest match is at the top, then clockwise; the small light under each tile is green (strong), yellow (medium) or orange (weak). Click a tile to type that symbol.
+
+**What it learns (Mac, v17 / 3.0).** While you type, the Mac app keeps the words you pick, how often, and in which script, in one readable file, `~/Library/Application Support/LekhaniOdia/sulekhak-learn.json` ([format](docs/learning-cache-format.md)). The web typist can import it ("Import learning file") so the online suggestions improve too, and `tools/learn_merge.py` turns it into the plain word lists the Windows and Android apps read.
+
+**Add to Sulekhak Dictionary (Mac).** Select a word or an expression in any app and add it to your own dictionary: click the small **+** that appears beside a mouse selection, press **Control+Option+D** (works for a keyboard selection too), use the input menu item, the **+ Dict** button of the 3D keyboard, or right-click → Services → *Add to Sulekhak Dictionary*. A box shows the word and a Roman spelling guessed for it; change it if you like, then add. Dictionary words are trusted (never filtered out as impossible spellings) and are stored in the same learning file and in `lexicon.tsv`.
 
 ## 🪟 Windows and 🤖 Android
 - **Android: [Sulekhak-Android.apk](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Android.apk)** (a debug-signed keyboard app, so Android asks you to allow installing from your browser or files app). Install it, open **Sulekhak**, switch the keyboard on, then choose it as your input method. It has the web keyboard's QWERTY layout, a number pad, symbols, emoji and Odia-letter pages, suggested next words, a globe key (and a long press on space) to change keyboard, a long press on a letter for its matras and conjuncts, and a long press on the full stop for all punctuation.
