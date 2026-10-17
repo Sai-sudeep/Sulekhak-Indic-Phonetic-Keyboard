@@ -122,6 +122,18 @@ Good to know
 - ⌨️ The on-screen keyboard changes its key letters with the language you pick (Odia, Devanagari, Assamese, Bangla, Phonetic).
 - 📒 Add your own words in `~/Library/Application Support/LekhaniOdia/lexicon.tsv` (roman⇥odia).
 
+## 🔲 Auto-surround
+Select some text, type an opening mark, and the selection is wrapped instead of replaced: `(hello)`, `[hello]`, `{hello}`, `"hello"`, `'hello'`, `` `hello` `` and `<hello>`. Nothing but the two marks is added, so the text, its line breaks and its indentation stay exactly as they were, and where the app allows it the text stays selected so you can stack marks (`((hello))`). It is a setting you can switch off, and it is remembered.
+
+| | Where the switch is | Selection afterwards |
+|---|---|---|
+| Web typist, iPad | the **Auto-surround** box under the keyboard | text stays selected |
+| Android | keyboard ⚙ settings → **Auto-surround** | text stays selected |
+| Mac | input-source menu → **Auto-surround selected text** (on by default) | caret after the closing mark |
+| Windows | tray icon → **Auto-surround selected text** (off by default, single-line selections in apps that expose their text to Windows) | text stays selected for plain Latin text |
+| iPhone / iPad keyboard | the **( )** button at the right of the suggestion bar | caret after the closing mark |
+| Keyman packages | not available (Keyman gives keyboards no access to the selection) | |
+
 ## 🌐 Try it in the browser
 Same engine, no install: [Sulekhak, the web typist](https://sai-sudeep.github.io/assets/tools/sulekhak.html). It also writes Devanagari, Assamese (ৰ, ৱ), Bangla, English, and a **Phonetic** mode: type a key, then pick the IPA, extIPA or IAST symbols that *look like* that key (hover a key, or long-press it on a phone or iPad, to see them all). It has a realistic 3D keyboard guide drawn as the keyboard you use (Mac, Windows, iPad / iPhone or Android) that can be detached, pinned, zoomed and resized, and it works on phones and tablets: hold and drag the space bar to move the cursor, hold the full stop for every punctuation mark, open the symbols and emoji page from the bottom-left key, double-tap a word, triple-tap a paragraph, drag the selection handles.
 It also plugs into [OMMNISKRIPT](https://sai-sudeep.github.io/assets/tools/ommniskript.html) as a "Write in" pad.
