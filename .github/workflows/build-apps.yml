@@ -26,8 +26,8 @@ jobs:
       - name: Get the language data from the live site
         run: |
           mkdir -p data
-          for f in cfg lex rom big clus syl_uni syl_bi syl_chan; do
-            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/$f.gz" -o "data/$f.gz"
+          for f in cfg lex rom clus syl_uni syl_bi syl_chan ng idx; do
+            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/compact/$f.gz" -o "data/$f.gz"
           done
           ls -la data
       - uses: actions/setup-java@v4
@@ -44,7 +44,9 @@ jobs:
           cp apps/shared/ime.html apps/shared/ime.js apps/shared/engine.js apps/shared/sulekhak.js "$A/"
           gunzip -c apps/shared/skel.dat.gz > "$A/skel.dat"
           gunzip -c data/cfg.gz > "$A/sulekhak/cfg.json"
-          for f in lex rom big clus syl_uni syl_bi syl_chan; do gunzip -c "data/$f.gz" > "$A/sulekhak/$f.txt"; done
+          for f in lex rom clus syl_uni syl_bi syl_chan; do gunzip -c "data/$f.gz" > "$A/sulekhak/$f.txt"; done
+          gunzip -c data/ng.gz > "$A/sulekhak/ng.bin"
+          gunzip -c data/idx.gz > "$A/sulekhak/idx.bin"
           du -sh "$A"
       - name: Build the APKs (all-in-one, Odia, Devanagari, Assamese, Bangla)
         run: gradle -p apps/android assembleDebug --no-daemon --stacktrace
@@ -84,8 +86,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p apps/windows/res
-          for f in cfg lex rom big clus syl_uni syl_bi syl_chan; do
-            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/$f.gz" -o "apps/windows/res/$f.gz"
+          for f in cfg lex rom clus syl_uni syl_bi syl_chan ng idx; do
+            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/compact/$f.gz" -o "apps/windows/res/$f.gz"
           done
           cp apps/shared/ime.html apps/shared/ime.js apps/shared/engine.js apps/shared/sulekhak.js apps/shared/skel.dat.gz apps/shared/phon-data.js apps/shared/phon-core.js apps/windows/res/
           cp apps/shared/osk.html apps/shared/kb3d.js apps/windows/oskres/
@@ -127,6 +129,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unpack the iPad and iPhone keyboard source
         run: tar xzf apps/ios-src.tar.gz -C apps
+      - name: Get the language model files from the live site
+        run: |
+          D=apps/ios/SulekhakKeyboard
+          for f in cfg lex rom clus syl_uni syl_bi syl_chan ng idx; do
+            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/compact/$f.gz" -o "/tmp/$f.gz"
+          done
+          gunzip -c /tmp/cfg.gz > $D/sk_cfg.json
+          for f in lex rom clus syl_uni syl_bi syl_chan; do gunzip -c /tmp/$f.gz > $D/sk_$f.txt; done
+          gunzip -c /tmp/ng.gz > $D/sk_ng.bin
+          gunzip -c /tmp/idx.gz > $D/sk_idx.bin
+          ls -la $D | head -40
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Build the app and keyboard (unsigned, for AltStore, SideStore or Sideloadly)
@@ -168,6 +181,12 @@ jobs:
           for d in dl/win-*; do cp "$d"/*.exe out/; done
           for f in out/Sulekhak-*.exe; do :; done
           cp dl/Sulekhak-Mac-dmgs/*.dmg out/
+          # DMGs get version-free names so the links in the README never change
+          for f in out/Sulekhak-*.dmg; do
+            b=$(basename "$f" .dmg); b=${b%-[0-9]*}; L=${b#Sulekhak-}
+            case "$L" in All-in-one) N=Sulekhak-Mac ;; Phonetic-IPA) N=Sulekhak-Mac-Phonetic ;; *) N=Sulekhak-Mac-$L ;; esac
+            mv "$f" "out/$N.dmg"
+          done
           [ -d dl/Sulekhak-iPad-ipa ] && cp dl/Sulekhak-iPad-ipa/*.ipa out/ || true
           # the all-in-one Windows file keeps its old name
           [ -f out/Sulekhak.exe ] && mv out/Sulekhak.exe out/Sulekhak-Windows.exe
@@ -176,4 +195,4 @@ jobs:
           gh release delete latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
           gh release create latest out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
             --title "Sulekhak Phonetic Keyboard: Mac, Windows and Android" \
-            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-<language>-<version>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). iPad and iPhone: Sulekhak-iPad.ipa (install it with AltStore, SideStore or Sideloadly, see docs/ios.md; the web app for iPad needs no install file). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
+            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-Mac.dmg and Sulekhak-Mac-<language>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). iPad and iPhone: Sulekhak-iPad.ipa (install it with AltStore, SideStore or Sideloadly, see docs/ios.md; the web app for iPad needs no install file). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
