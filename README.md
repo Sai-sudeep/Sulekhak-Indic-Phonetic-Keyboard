@@ -128,7 +128,7 @@ Both keep the words you pick and offer them first next time. These two apps were
 
 ## 🧭 Keys that differ by platform
 
-The letter keys behave the same everywhere, because they all follow the same Sulekhak rules: `d` / `dh`, `y`, `w`, `v`, `sh` / `Sh`, `s` / `S`, `ksh` / `x` / `khy`, `ru`, `e`, `ai`, `o`, `au` and `ou` give the same choices in the same order, and Z, z, the backtick and `>` (nukta) work the same way. What differs is where the rare signs and the punctuation keys live, because a phone or tablet has no Shift + 8 list and Keyman works by fixed rules:
+The letter keys behave the same everywhere, because they all follow the same Sulekhak rules: `d` / `dh`, `y`, `w`, `v`, `sh` / `Sh`, `s` / `S`, `ksh` / `x` / `khy`, `ru`, `e`, `ai`, `o`, `au` and `ou` give the same choices, and Z, z, the backtick and `>` (nukta) work the same way. What differs is where the rare signs and the punctuation keys live, because a phone or tablet has no Shift + 8 list and Keyman works by fixed rules:
 
 | | 🍎 Mac · 🪟 Windows · 🌐 web typist (computer) | 🤖 Android | 📱 iPad · iPhone | 🌐 web typist (phone, tablet) | ⌨️ Keyman |
 |---|---|---|---|---|---|
@@ -142,7 +142,7 @@ The letter keys behave the same everywhere, because they all follow the same Sul
 The `*` and `|` lists are only for PC keyboards: the Mac app, Windows and the web typist on a computer. Phones and tablets keep their own shift-number rows and long presses instead, so a star or a bar typed there is always just a star or a bar.
 
 ## 👆 Swipe typing (phones and tablets)
-Put a finger on the first letter of a word, slide it across the letters and lift it: the words that fit the path appear above the keys. Space (or a tap on a word) puts it in, Backspace drops the suggestions, and any other key takes the first word and carries on. It uses the same word list and rules as tapping, so ZWNJ and the nukta spellings come out as they do everywhere else, and the words you take rank higher next time. The path is also weighed against the word you typed just before it, by the same language model that orders the suggestions. It works in Odia, Devanagari, Assamese and Bangla.
+Put a finger on the first letter of a word, slide it across the letters and lift it: the words that fit the path appear above the keys. Space (or a tap on a word) puts it in, Backspace drops the suggestions, and any other key takes the first word and carries on. It uses the same word list and rules as tapping, and it forgives a finger that brushes a neighbouring key on the way, a dropped inner *a* (you can swipe `rhibe` for ରହିବେ) and the chandrabindu words (ପାଇଁ, ମୁଁ), so ZWNJ and the nukta spellings come out as they do everywhere else, and the words you take rank higher next time. The path is also weighed against the word you typed just before it, by the same language model that orders the suggestions. It works in Odia, Devanagari, Assamese and Bangla.
 
 | | How to turn it on or off | Default |
 |---|---|---|
@@ -151,7 +151,7 @@ Put a finger on the first letter of a word, slide it across the letters and lift
 | 🤖 Android keyboard | keyboard ⚙ settings, **Swipe across the letters to type a word** | on |
 
 ## 🧠 The language model
-Every Sulekhak app, on every platform (Mac, Windows, Android, iPad and iPhone, and the web typist on a computer or a phone), orders its suggestions with the same bigram and trigram model: it looks at the one or two words you typed before and moves the likelier word to the front. The same model gives the *next word* suggestions after you finish a word, and weighs swiped paths. The spelling rules (the nukta, ZWNJ, `d` / `dh`, `y`, `w`, `sh` / `s` and the others) are shared too, so the same letters give the same choices in the same order wherever you type. The web typist on a computer uses the largest word list; the apps and the web on phones use a lighter one that fits in a phone's memory.
+Every Sulekhak app, on every platform (Mac, Windows, Android, iPad and iPhone, and the web typist on a computer or a phone), orders its suggestions with the same bigram and trigram model: it looks at the one or two words you typed before and moves the likelier word to the front. The same model gives the *next word* suggestions after you finish a word, and weighs swiped paths. The spelling rules (the nukta, ZWNJ, `d` / `dh`, `y`, `w`, `sh` / `s` and the others) are shared too, so the same letters give the same choices wherever you type; the order of the lower choices can differ a little between the full list and the lighter one. The web typist on a computer uses the largest word list; the apps and the web on phones use a lighter one that fits in a phone's memory.
 
 ## ✍️ How to use
 Type Odia the way it sounds, in English letters. A small box shows choices:
