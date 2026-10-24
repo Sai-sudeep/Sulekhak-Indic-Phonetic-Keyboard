@@ -1,6 +1,6 @@
 # Sulekhak for iPad and iPhone (system keyboard)
 
-A real iPadOS / iOS keyboard: type with English letters in any app and get Odia, Devanagari, Assamese or Bangla, plus a Phonetic (IPA) mode and plain English.
+A real iPadOS / iOS keyboard: type with English letters in any app and get Odia, Devanagari, Assamese or Bangla, plus a Phonetic (IPA) mode and English with suggestions and spelling correction.
 Same language engine as the web, Android and Windows apps (JavaScript in JavaScriptCore). It asks for no Full Access, has no network code, and keeps what you choose on the device only.
 
 If you only want to type inside Sulekhak itself, the web app needs no install file: open `sai-sudeep.github.io/assets/tools/sulekhak.html` in Safari, tap Share, Add to Home Screen.
@@ -27,7 +27,8 @@ After installing: Settings > General > Keyboard > Keyboards > Add New Keyboard >
 ## What it is and what it is not (yet)
 
 * Candidates come from the rule engine, the built-in word list, the language model and the words you have chosen before. The model needs the data files `sk_*.txt`, `sk_cfg.json`, `sk_ng.bin` and `sk_idx.bin` in `SulekhakKeyboard/`; the GitHub build downloads them from the Sulekhak web typist pack. Without them the keyboard still works with the rule engine alone.
-* What you choose is kept on this device (`sulekhak.learned.v1`, up to 3000 words). It is not synced to the Mac `sulekhak-learn.json`, because that needs the App Groups feature of a paid account.
+* What you choose is kept on this device (`sulekhak.learned.v1`, up to 3000 words, and the per-language history files that the English mode and the other apps use). Nothing is synced: this build has no sign-in and no network code.
+* **English** mode (the last language on the language key): your text keeps the letters you type, the bar offers completions and spelling corrections, Space takes the first one, Backspace right after takes the correction back. It uses a smaller word list than the Mac and Windows apps (about 60,000 forms) because a keyboard extension may use very little memory.
 * Not tested on a real iPad by me: the GitHub build proves it compiles, nothing more. Please tell me what looks wrong.
 
 ## Source
