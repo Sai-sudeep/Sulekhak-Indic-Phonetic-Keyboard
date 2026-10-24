@@ -17,7 +17,7 @@
 | **मराठी** | **Marathi** (Devanagari) | Switch the **Marathi ळ** option on and `kuNDaLa` gives **कुण्डळ**; with it off, **कुण्डल** |
 | **অসমীয়া** | **Assamese** | Assamese letters **ৰ** and **ৱ** (`byavahar` → ব্যৱহাৰ), kept apart from the Bangla ra and ba. Wherever ত্ is possible, the **ৎ** spelling is offered right beside it (`jagat` → জগত · জগৎ) |
 | **বাংলা** | **Bangla** | Bangla script from the same keys and the same dictionary |
-| **English** | Mixed typing | Every choice list also offers what you typed, so English words sit between Odia words |
+| **English** | Mixed typing, and an English keyboard | Every choice list also offers what you typed, so English words sit between Odia words. The **English** mode (Mac, Windows, Android, iPad and iPhone) completes words, corrects spelling when you press Space (`teh` → the; Backspace puts back what you typed) and learns the words you choose, on your own device only |
 | **IPA · extIPA · IAST** | Phonetic symbols (web, Mac, Windows) | Type a key, then pick the symbol that looks like it |
 
 Every language is available on Mac, Windows, Android, iPad and iPhone, Keyman and the web: pick your device in the Download table below.
@@ -25,6 +25,10 @@ Every language is available on Mac, Windows, Android, iPad and iPhone, Keyman an
 The same word in each script: `kuNDaLa` → କୁଣ୍ଡଳ (Odia) · कुण्डल (Devanagari) · कुण्डळ (Marathi option) · কুণ্ডল (Bangla)
 
 <p align="center"><img src="docs/img/languages.png" alt="Odia, Devanagari, Assamese, Bangla, English and phonetic symbols" width="100%"></p>
+
+### English typing
+
+Switch to **English** and the same box offers completions and spelling fixes while you type English: the letters stay in your text, **Space** puts in the first suggestion (`teh ` → `the `, `dont ` → `don't `), a tap picks another one, and **Backspace** straight after a correction gives back exactly what you typed. Words you pick or type often are remembered and move up, and a correction you refuse is not made again. Everything is learnt and kept on your own device: this public app has no sign-in and asks for no network permission on Android and iPhone/iPad. (The word lists are built from open sources; see `core/english` in the app sources.)
 
 ## ✨ ZWNJ done right
 Type **Z** after the letter to get a halant followed by a zero-width non-joiner, so the letters stay apart the way Odia is written. `Z` is halant + ZWNJ, `z` is ZWNJ alone (hold `z` on a phone or in the key guide for **ZWJ**), and the backtick is the halant alone. In a word with a Z the choices run: the ZWNJ spelling, what you typed, the same without ZWNJ, the same with ZWJ, then every other choice. `bagdebi` also finds **ବାଗ୍‌ଦେବୀ** straight away.
