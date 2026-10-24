@@ -53,4 +53,4 @@ The IPA is unsigned. A sideloading tool (AltStore, SideStore, Sideloadly) signs 
 | macOS | install over an older install: id unchanged, app replaced, one copy only, data kept, uninstall keeps data | job `mac` |
 | iOS | bundle ids exactly as expected, build number grows | job `ios` |
 
-These tests were written in this pass and had **not been run yet** when this page was written. Look at the Actions tab for their result.
+The Windows, Android, macOS and iOS checks above all ran in GitHub Actions on real Windows, macOS and an Android 11 emulator; see `docs/engineering.md` for what each run proved and what it did not (nothing was tried on a physical phone, and the visible Win+Space menu was not looked at by a person).
