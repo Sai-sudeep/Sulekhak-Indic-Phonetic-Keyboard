@@ -310,7 +310,7 @@ jobs:
         run: |
           $o = "apps\windows\out"
           & apps\windows\installer\test_install.ps1 -OldSetup "$o\Sulekhak-Windows-Setup-old.exe" -NewSetup "$o\Sulekhak-Windows-Setup-new.exe" `
-              -OldVer $env:OLDVER -NewVer $env:NEWVER -Driver "apps\windows\tip\build\tip_driver.exe" -AddKeyboardsScript "apps\windows\res\AddKeyboards.ps1"
+              -OldVer $env:OLDVER -NewVer $env:NEWVER -Driver "apps\windows\tip\build\tip_driver.exe" -AddKeyboardsScript "apps\windows\res\AddKeyboards.ps1" -LaunchDll (Resolve-Path "apps\windows\tip\build\sulekhak_tip_x64.dll").Path
           if ($LASTEXITCODE) { exit 1 }
       - name: Logs of the installer runs
         if: always()
