@@ -30,17 +30,18 @@ Phone and tablet keyboards are deliberately a different input strategy (touch, s
 | Windows hook-mode key machine (C#) | **Verified** under mono | 84/84 vectors (`core-tests`) |
 | Windows text-service key logic (C++) | **Verified** natively | 535/535 decision-for-decision against the spec (`core-tests`) |
 | Text-service DLL builds, 64 and 32 bit | **Verified** | MinGW build in `core-tests` |
-| Text service registers, creates, activates, commits text through TSF | **Verified under Wine only** (9 pass, 4 skipped) | Wine's TSF lacks composition and `ITfRange::Clone`. The first CI run on a real Windows runner is the real check (`windows-installer`). |
-| Composition underline, Shift+`.` nukta rewrite, Backspace over one code point, inside real TSF | **Implemented, not yet verified** | the skipped Wine tests; they run for the first time on `windows-latest` |
-| Win+Space lists "Sulekhak — All Languages", Odia, Hindi, Marathi, Bangla, Assamese | **Verified under Wine** (profile enumeration); **real Windows: runs in CI** | `tip_driver --list` |
-| Installer install / upgrade while the DLL is in use / repair / rollback / uninstall | **Implemented**, test written (`test_install.ps1`), **not yet run** on Windows | runs in `windows-installer` |
-| Windows keyboard-hook rewrite in the app | **Implemented, compiles** (mcs, except WebView2 types that mono lacks) | not run on Windows |
-| Named-pipe engine bridge security (SDDL, AppContainer) | **Implemented, not verified**, in particular low-integrity and AppContainer apps | see limits |
-| Android release signing, versionCode that always grows | **Implemented**; needs the four GitHub secrets | `android` job checks cert SHA-256 |
-| Android in-place upgrade, data kept, forged update refused | **Implemented**, emulator test written, **not yet run** | `android-upgrade-test` |
-| Android historical touch samples for swipe | **Implemented, not verified on a device** | `KeyboardView.java` |
-| macOS update identity (bundle id stable, replace in place, data kept) | **Implemented as CI check; not run**. Mac source was not changed. Mac behaviour was validated by reading the source, not by executing it. | `mac` job |
-| iOS identity and version growth | **Implemented as CI check; not run** | `ios` job |
+| Text service registers, is created and activated through TSF, composes, rewrites for nukta, commits, Backspace over one code point | **Verified on real Windows** (GitHub `windows-latest`): 14 of 14, none skipped, run against the installed DLL. Also 9 of 9 under Wine. | `tip_driver`, job `windows-installer` |
+| Windows itself activates the keyboard (what choosing it in Win+Space does) and loads the DLL | **Verified on real Windows**: `ActivateProfile` succeeded, the active keyboard became *Sulekhak Odia*, the DLL was loaded by Windows | `tip_driver --activate` |
+| Win+Space lists *Sulekhak — All Languages*, Odia, Hindi, Marathi, Bangla, Assamese | **Verified on real Windows** at the system-API level (all 6 listed and enabled; absent after uninstall). A new install takes a few seconds to appear (3 s measured). The visible Win+Space flyout was not looked at by a person. | `tip_driver --list` |
+| Installer: fresh install, upgrade while a program holds the old DLL, repair removes the old folder, rollback, uninstall removes every registration, one entry in Apps & features, user data and settings kept | **Verified on real Windows** | `test_install.ps1` |
+| Keyboards added to the user's Windows language list by the app's script | **Verified on real Windows** (after fixing a failure the first CI run found: `New-WinUserLanguage` is absent on some editions) | `AddKeyboards.ps1` |
+| Windows app (tray, offering the keyboards, hook-mode rewrite) | **Compiles on Windows** (all six builds). Not run by a person: the first-run offer and the tray menu are untested. | `windows` jobs |
+| Named-pipe engine bridge between the text service and the app | Used successfully by the driver on Windows (17 queries). Low-integrity and AppContainer apps untested. | see limits |
+| Android release signing, versionCode that always grows | **Implemented and built in CI**; real-key signing waits for the four GitHub secrets (the job then checks the certificate SHA-256) | `android` job |
+| Android in-place upgrade, data kept, keyboard still on, forged update (other key) refused, downgrade refused, uninstall | **Verified on an Android 11 emulator** (12 of 12 on one run; a second run hit a timing race in the test itself, fixed by waiting for the keyboard to register). Run so far with the temporary key because the secrets are not set yet. | `android-upgrade-test` |
+| Android historical touch samples for swipe | **Compiles in CI**; not tried on a device | `KeyboardView.java` |
+| macOS update identity (bundle id stable, replaced in place, one copy, data kept, uninstall keeps data) | **Verified on a macOS runner** by installing over an older install. The Mac source was not changed, and its key behaviour was checked by reading the source only. | `mac` job |
+| iOS identity (the two bundle ids) and a build number that grows | **Verified in CI** on the built IPA. Updating a sideloaded install on a device was not tried. | `ios` job |
 
 ## 3. Known limits (not solved)
 
