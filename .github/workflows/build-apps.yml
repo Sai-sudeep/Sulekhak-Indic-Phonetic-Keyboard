@@ -48,22 +48,77 @@ jobs:
           gunzip -c data/ng.gz > "$A/sulekhak/ng.bin"
           gunzip -c data/idx.gz > "$A/sulekhak/idx.bin"
           du -sh "$A"
-      - name: Build the APKs (all-in-one, Odia, Devanagari, Assamese, Bangla)
-        run: gradle -p apps/android assembleDebug --no-daemon --stacktrace
+      - name: Restore the release signing key
+        id: key
+        env:
+          SK_B64: ${{ secrets.SK_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$SK_B64" ] && [ -n "${{ secrets.SK_KEYSTORE_PASS }}" ]; then
+            echo "$SK_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SK_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "signed=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Android is NOT signed with the release key::Add the four secrets SK_KEYSTORE_B64, SK_KEYSTORE_PASS, SK_KEY_ALIAS, SK_KEY_PASS (Settings > Secrets and variables > Actions). Until then every APK is signed with a throw-away debug key and cannot be installed over the previous one."
+            echo "signed=debug" >> "$GITHUB_OUTPUT"
+          fi
+        # the passwords are read by gradle from the environment, never written to a file
+      - name: Build the APKs (all-in-one, Odia, Devanagari, Assamese, Bangla), release signed
+        env:
+          SK_KEYSTORE_PASS: ${{ secrets.SK_KEYSTORE_PASS }}
+          SK_KEY_ALIAS: ${{ secrets.SK_KEY_ALIAS }}
+          SK_KEY_PASS: ${{ secrets.SK_KEY_PASS }}
+        run: |
+          # the version code only ever grows: minutes since 1970 (Android refuses an update whose number is not higher)
+          VC=$(( $(date +%s) / 60 ))
+          echo "VC=$VC" >> "$GITHUB_ENV"
+          gradle -p apps/android assembleRelease -PskVersionCode=$VC --no-daemon --stacktrace
       - name: Collect the APKs
         run: |
           mkdir -p apk
           cd apps/android/app/build/outputs/apk
-          cp allinone/debug/*.apk "$GITHUB_WORKSPACE/apk/Sulekhak-Android.apk"
+          cp allinone/release/*.apk "$GITHUB_WORKSPACE/apk/Sulekhak-Android.apk"
           for e in odia devanagari assamese bangla; do
             E="$(echo ${e:0:1} | tr a-z A-Z)${e:1}"
-            cp "$e/debug/"*.apk "$GITHUB_WORKSPACE/apk/Sulekhak-Android-$E.apk"
+            cp "$e/release/"*.apk "$GITHUB_WORKSPACE/apk/Sulekhak-Android-$E.apk"
           done
           ls -la "$GITHUB_WORKSPACE/apk"
+      - name: Check the signature of every APK
+        run: |
+          AS=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)apksigner
+          WANT=$(tr -d ':\n ' < apps/android/release-cert.sha256 | tr A-F a-f)
+          for f in apk/*.apk; do
+            "$AS" verify --verbose "$f" | head -3
+            GOT=$("$AS" verify --print-certs "$f" | grep 'certificate SHA-256 digest' | head -1 | awk '{print $NF}')
+            echo "$f  cert SHA-256 $GOT"
+            if [ "${{ steps.key.outputs.signed }}" = release ] && [ "$GOT" != "$WANT" ]; then echo "::error::$f is not signed with the release key"; exit 1; fi
+          done
+          echo "signed=${{ steps.key.outputs.signed }}" > apk/SIGNING.txt
+      - name: Build the test pair for the emulator (previous release, and a forged update)
+        env:
+          SK_KEYSTORE_PASS: ${{ secrets.SK_KEYSTORE_PASS }}
+          SK_KEY_ALIAS: ${{ secrets.SK_KEY_ALIAS }}
+          SK_KEY_PASS: ${{ secrets.SK_KEY_PASS }}
+        run: |
+          mkdir -p apktest
+          # "previous release": same key, lower version code
+          gradle -p apps/android assembleAllinoneRelease -PskVersionCode=$((VC-1)) --no-daemon -q
+          cp apps/android/app/build/outputs/apk/allinone/release/*.apk apktest/old.apk
+          # "forged update": same package, HIGHER version code, a different key
+          keytool -genkeypair -keystore "$RUNNER_TEMP/other.jks" -storepass otherpass -keypass otherpass -alias other -keyalg RSA -keysize 2048 -validity 10 -dname "CN=forger" -storetype PKCS12
+          SK_KEYSTORE_FILE="$RUNNER_TEMP/other.jks" SK_KEYSTORE_PASS=otherpass SK_KEY_ALIAS=other SK_KEY_PASS=otherpass \
+            gradle -p apps/android assembleAllinoneRelease -PskVersionCode=$((VC+1)) --no-daemon -q
+          cp apps/android/app/build/outputs/apk/allinone/release/*.apk apktest/other.apk
+          ls -la apktest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sulekhak-Android-test-apks
+          path: apktest/*.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Sulekhak-Android-apks
-          path: apk/*.apk
+          path: |
+            apk/*.apk
+            apk/SIGNING.txt
 
   windows:
     runs-on: windows-latest
@@ -107,6 +162,137 @@ jobs:
           name: win-${{ matrix.file }}
           path: out/${{ matrix.file }}.exe
 
+  android-upgrade-test:
+    needs: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack sources
+        run: tar xzf apps/src.tar.gz -C apps
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+      - name: Allow the emulator to use hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install, upgrade, refuse a forged update, uninstall (Android 11 emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          script: bash apps/android/ci/upgrade_test.sh dl/Sulekhak-Android-test-apks/old.apk dl/Sulekhak-Android-apks/Sulekhak-Android.apk dl/Sulekhak-Android-test-apks/other.apk
+
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack sources
+        run: tar xzf apps/src.tar.gz -C apps
+      - name: Tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mono-mcs mono-runtime g++ g++-mingw-w64-x86-64 g++-mingw-w64-i686
+      - name: Keyboard mapping, JavaScript reference implementation (the specification itself)
+        run: |
+          node apps/core/keymap/run_vectors.js
+          node apps/core/keymap/run_nukta.js
+      - name: The generated tables are in step with the specification
+        run: |
+          mkdir -p /tmp/gen && node apps/core/keymap/gen_cs.js /tmp/gen /tmp/gen /tmp/gen
+          diff /tmp/gen/KeyTable.g.cs apps/windows/KeyTable.g.cs
+          diff /tmp/gen/KeyVectors.g.cs apps/windows/tests/KeyVectors.g.cs
+          diff /tmp/gen/keytable.inc apps/windows/tip/keytable.inc
+          node apps/core/keymap/dump_decisions.js > /tmp/gen/decisions.txt
+          diff /tmp/gen/decisions.txt apps/windows/tip/tests/decisions.txt
+      - name: Keyboard mapping, C# implementation (Windows hook mode)
+        run: sh apps/windows/tests/run.sh
+      - name: Keyboard mapping, C++ implementation (Windows text service), decision-for-decision against the specification
+        run: sh apps/windows/tip/tests/run.sh
+      - name: Build the text service DLLs (64-bit and 32-bit) and the TSF test driver
+        run: |
+          cd apps/windows/tip
+          sh build.sh build
+          x86_64-w64-mingw32-g++ -std=c++17 -O1 -w -static -static-libgcc -static-libstdc++ -o build/tip_driver.exe tests/tip_driver.cpp -lole32 -loleaut32 -luuid -ladvapi32 -luser32
+      - name: Get the language data from the live site (for the swipe evaluation)
+        run: |
+          mkdir -p /tmp/pack/compact
+          for f in cfg lex rom clus syl_uni syl_bi syl_chan ng idx; do
+            curl -fsSL "https://sai-sudeep.github.io/assets/tools/sulekhak/compact/$f.gz" -o "/tmp/pack/compact/$f.gz"
+          done
+      - name: Swipe evaluation (synthetic gestures, fixed seed) with regression bounds
+        run: |
+          cd apps/core/swipe
+          node gen_dataset.js --pack /tmp/pack/compact --prompts prompts.json --out /tmp/dataset.json
+          node run_eval.js --engine ../../shared/sulekhak.js --pack /tmp/pack/compact --data /tmp/dataset.json --split test \
+               --out /tmp/swipe_result.json --assert "top1>=72,top3>=85,top8>=90,p95<=400" | tee /tmp/swipe_summary.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tip-dlls
+          path: |
+            apps/windows/tip/build/*.dll
+            apps/windows/tip/build/tip_driver.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swipe-eval-result
+          path: |
+            /tmp/swipe_result.json
+            /tmp/swipe_summary.txt
+
+  windows-installer:
+    needs: [windows, core-tests]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack sources
+        shell: bash
+        run: tar xzf apps/src.tar.gz -C apps
+      - uses: actions/download-artifact@v4
+        with:
+          name: win-Sulekhak
+          path: apps/out
+      - uses: actions/download-artifact@v4
+        with:
+          name: tip-dlls
+          path: apps/windows/tip/build
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          "ISCC=${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+      - name: Build the installer of this release and a simulated earlier release
+        shell: pwsh
+        working-directory: apps/windows/installer
+        run: |
+          $new = "1.5.${{ github.run_number }}.0"; $old = "1.4.${{ github.run_number }}.0"
+          "NEWVER=$new" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "OLDVER=$old" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force ..\out | Out-Null
+          & $env:ISCC /Q "/DAppVersion=$new" "/DSrcExe=..\..\out\Sulekhak.exe" "/DTipDir=..\tip\build" Sulekhak.iss
+          if ($LASTEXITCODE) { throw "iscc failed" }
+          Move-Item ..\out\Sulekhak-Windows-Setup.exe ..\out\Sulekhak-Windows-Setup-new.exe
+          & $env:ISCC /Q "/DAppVersion=$old" "/DSrcExe=..\..\out\Sulekhak.exe" "/DTipDir=..\tip\build" Sulekhak.iss
+          if ($LASTEXITCODE) { throw "iscc failed" }
+          Move-Item ..\out\Sulekhak-Windows-Setup.exe ..\out\Sulekhak-Windows-Setup-old.exe
+          Get-ChildItem ..\out
+      - name: Install, upgrade while in use, repair, TSF driver, keyboard list, rollback, uninstall
+        shell: pwsh
+        run: |
+          $o = "apps\windows\out"
+          & apps\windows\installer\test_install.ps1 -OldSetup "$o\Sulekhak-Windows-Setup-old.exe" -NewSetup "$o\Sulekhak-Windows-Setup-new.exe" `
+              -OldVer $env:OLDVER -NewVer $env:NEWVER -Driver "apps\windows\tip\build\tip_driver.exe" -AddKeyboardsScript "apps\windows\res\AddKeyboards.ps1"
+          if ($LASTEXITCODE) { exit 1 }
+      - name: Logs of the installer runs
+        if: always()
+        shell: pwsh
+        run: Get-ChildItem $env:TEMP\sk_setup_*.log | ForEach-Object { "=== $_"; Get-Content $_ -Tail 40 }
+      - run: Move-Item apps\windows\out\Sulekhak-Windows-Setup-new.exe apps\windows\out\Sulekhak-Windows-Setup.exe
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-installer
+          path: apps/windows/out/Sulekhak-Windows-Setup.exe
+
   mac:
     runs-on: macos-latest
     steps:
@@ -118,6 +304,26 @@ jobs:
           cd macsrc/OdiaPhonetic-Mac
           bash build.sh everything --dmg
           ls -la dist
+      - name: Update check - installing over an older install keeps the identity and the user's data
+        run: |
+          cd macsrc/OdiaPhonetic-Mac
+          UIM="$HOME/Library/Input Methods"; SUP="$HOME/Library/Application Support/LekhaniOdia"
+          mkdir -p "$UIM" "$SUP"; echo keep > "$SUP/upgrade_marker"
+          NEWV=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" build/dmg-all/OdiaPhonetic.app/Contents/Info.plist)
+          # an "older release" already installed
+          rm -rf "$UIM/OdiaPhonetic.app"; cp -R build/dmg-all/OdiaPhonetic.app "$UIM/OdiaPhonetic.app"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 1" -c "Set :CFBundleShortVersionString 0.1" "$UIM/OdiaPhonetic.app/Contents/Info.plist"
+          bash "build/dmg-all/Install Sulekhak All-in-one.command" </dev/null || true
+          GOTV=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$UIM/OdiaPhonetic.app/Contents/Info.plist")
+          ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$UIM/OdiaPhonetic.app/Contents/Info.plist")
+          [ "$ID" = com.saisudeep.inputmethod.OdiaPhonetic ] || { echo "::error::bundle id changed: $ID"; exit 1; }
+          [ "$GOTV" = "$NEWV" ] || { echo "::error::the installed copy was not replaced ($GOTV, expected $NEWV)"; exit 1; }
+          [ -f "$SUP/upgrade_marker" ] || { echo "::error::user data was lost"; exit 1; }
+          [ "$(ls -d "$UIM"/*.app | wc -l)" -eq 1 ] || { echo "::error::more than one input method app is installed"; ls "$UIM"; exit 1; }
+          codesign --verify --deep "$UIM/OdiaPhonetic.app" && echo "code signature valid"
+          # uninstall leaves the user's data
+          bash "build/dmg-all/Uninstall.command" </dev/null || true
+          [ ! -d "$UIM/OdiaPhonetic.app" ] && [ -f "$SUP/upgrade_marker" ] && echo "uninstall ok, data kept"
       - uses: actions/upload-artifact@v4
         with:
           name: Sulekhak-Mac-dmgs
@@ -148,6 +354,7 @@ jobs:
           xcodegen generate
           xcodebuild -project Sulekhak.xcodeproj -scheme Sulekhak -configuration Release -sdk iphoneos \
             -destination 'generic/platform=iOS' -derivedDataPath build \
+            CURRENT_PROJECT_VERSION=$(( $(date +%s) / 60 )) MARKETING_VERSION=1.1 \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" build
       - name: Make the IPA
         run: |
@@ -155,6 +362,12 @@ jobs:
           rm -rf Payload && mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/Sulekhak.app Payload/
           ls Payload/Sulekhak.app/PlugIns
+          # identity must be exactly these two ids on every release, and the version number must grow (iOS refuses an update with a lower one)
+          A=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" Payload/Sulekhak.app/Info.plist)
+          K=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" Payload/Sulekhak.app/PlugIns/*.appex/Info.plist)
+          V=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" Payload/Sulekhak.app/Info.plist)
+          echo "app=$A keyboard=$K build=$V"
+          [ "$A" = com.saisudeep.sulekhak ] && [ "$K" = com.saisudeep.sulekhak.keyboard ] || { echo "::error::bundle identifiers changed"; exit 1; }
           zip -qry Sulekhak-iPad.ipa Payload
           ls -la Sulekhak-iPad.ipa
       - uses: actions/upload-artifact@v4
@@ -163,8 +376,8 @@ jobs:
           path: apps/ios/Sulekhak-iPad.ipa
 
   release:
-    needs: [android, windows, mac, ios]
-    if: ${{ !cancelled() && needs.android.result == 'success' && needs.windows.result == 'success' && needs.mac.result == 'success' }}
+    needs: [android, android-upgrade-test, core-tests, windows, windows-installer, mac, ios]
+    if: ${{ !cancelled() && needs.android.result == 'success' && needs.android-upgrade-test.result == 'success' && needs.core-tests.result == 'success' && needs.windows.result == 'success' && needs.windows-installer.result == 'success' && needs.mac.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -179,6 +392,7 @@ jobs:
           mkdir out
           cp dl/Sulekhak-Android-apks/*.apk out/
           for d in dl/win-*; do cp "$d"/*.exe out/; done
+          cp dl/swipe-eval-result/swipe_summary.txt out/Swipe-evaluation-summary.txt || true
           for f in out/Sulekhak-*.exe; do :; done
           cp dl/Sulekhak-Mac-dmgs/*.dmg out/
           # DMGs get version-free names so the links in the README never change
@@ -192,7 +406,9 @@ jobs:
           [ -f out/Sulekhak.exe ] && mv out/Sulekhak.exe out/Sulekhak-Windows.exe
           for e in Odia Devanagari Bangla Assamese Phonetic; do [ -f "out/Sulekhak-$e.exe" ] && mv "out/Sulekhak-$e.exe" "out/Sulekhak-Windows-$e.exe"; done
           ls -la out
+          NOTE=""
+          if grep -q 'signed=debug' dl/Sulekhak-Android-apks/SIGNING.txt 2>/dev/null; then NOTE="WARNING: this Android build is signed with a temporary key (the release key is not set up in this repository yet), so it cannot be installed over a previous version: uninstall first. "; fi
           gh release delete latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
           gh release create latest out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
             --title "Sulekhak Phonetic Keyboard: Mac, Windows and Android" \
-            --notes "Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-Mac.dmg and Sulekhak-Mac-<language>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows*.exe, one file, no installer. Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). iPad and iPhone: Sulekhak-iPad.ipa (install it with AltStore, SideStore or Sideloadly, see docs/ios.md; the web app for iPad needs no install file). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
+            --notes "${NOTE}Each platform has the all-in-one (Odia, Devanagari, Assamese, Bangla, Phonetic IPA) and one file per language. Mac: Sulekhak-Mac.dmg and Sulekhak-Mac-<language>.dmg (open it and double-click the Install file). Windows: Sulekhak-Windows-Setup.exe (installer: adds Sulekhak to Win+Space, updates in place) or the portable Sulekhak-Windows*.exe (no installer, older keyboard-hook mode). Android: Sulekhak-Android*.apk (install, open the app, switch the keyboard on). iPad and iPhone: Sulekhak-iPad.ipa (install it with AltStore, SideStore or Sideloadly, see docs/ios.md; the web app for iPad needs no install file). Web: sai-sudeep.github.io/assets/tools/sulekhak.html and the sulekhak-<language>.html pages."
