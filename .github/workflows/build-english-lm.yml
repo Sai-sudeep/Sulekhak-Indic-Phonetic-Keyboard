@@ -1,0 +1,103 @@
+name: Train the English language model
+
+# Downloads the text corpora (see apps/core/english/build/lm/fetch_corpora.py), picks example sentences for the words of the list,
+# trains the one-word and three-word next-word tables, measures them on sentences left out of the counts and publishes the result
+# as a release (english-lm-<run number>): en_ng.txt.gz (full, desktop and Android), en_ng-web.txt.gz (web pages), en_ng-lite.txt.gz (iPhone/iPad), vocab_sentences.txt.gz, the reports.
+# Start it from the Actions tab (Run workflow) or by changing english-lm.trigger (a line `scale=small` there makes it a trial run).
+
+permissions:
+  contents: write
+
+concurrency:
+  group: english-lm
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      scale:
+        description: 'small = a trial with a little of each corpus; full = the real build'
+        default: 'full'
+  push:
+    branches: [main]
+    paths:
+      - 'english-lm.trigger'
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Unpack the sources
+        run: tar xzf apps/src.tar.gz -C apps
+      - name: Python packages
+        run: pip install numpy pyarrow
+      - name: The starting data (the word list is never changed)
+        run: |
+          mkdir -p work/base work/sent work/out
+          for f in en_lex en_ng en_fix; do gunzip -c apps/core/english/base/$f.txt.gz > work/base/$f.txt; done
+          wc -l work/base/*.txt
+      - name: Download the corpora
+        run: |
+          SCALE="${{ github.event.inputs.scale }}"
+          [ -n "$SCALE" ] || SCALE=$(grep -o 'scale=[a-z]*' english-lm.trigger | head -1 | cut -d= -f2)
+          [ -n "$SCALE" ] || SCALE=full
+          echo "scale: $SCALE"
+          python3 apps/core/english/build/lm/fetch_corpora.py work/sent --scale "$SCALE" 2>&1 | tee work/fetch.log
+        env:
+          PYTHONUNBUFFERED: '1'
+      - name: Which sources arrived
+        run: |
+          ls -la work/sent
+          python3 - <<'PY'
+          import json
+          m = json.load(open('work/sent/sources.json'))
+          for k, v in m.items(): print(k, 'OK' if 'error' not in v else 'SKIPPED: ' + v['error'])
+          PY
+      - name: Train
+        run: |
+          python3 apps/core/english/build/lm/build_lm.py --lex work/base/en_lex.txt --ng-old work/base/en_ng.txt --sent work/sent --out work/out \
+            --parts 32 --tg-budget-mb 40 2>&1 | tee work/train.log
+        env:
+          PYTHONUNBUFFERED: '1'
+      - name: Assemble the full and the small tiers
+        run: |
+          mkdir -p work/full work/web work/lite
+          cp work/base/en_lex.txt work/base/en_fix.txt work/full/ && cp work/out/en_ng.txt work/full/en_ng.txt
+          cp work/base/en_lex.txt work/base/en_fix.txt work/web/ && python3 apps/core/english/build/lm/cut_tier.py work/full/en_ng.txt work/web/en_ng.txt 12 8
+          python3 apps/core/english/build/make_lite.py work/full work/lite
+          ls -la work/full work/web work/lite
+      - name: Measure on sentences that are in no count (old table, new table, small tier)
+        run: |
+          LIM=6000 node apps/core/english/tests/eval_lm.js work/out/heldout.txt old=work/base full=work/full web=work/web lite=work/lite 2>&1 | tee work/eval_lm.txt
+          node apps/core/english/tests/eval.js work/full 2>&1 | tail -16 | tee work/eval_regression.txt
+      - name: Pack
+        run: |
+          mkdir -p dist
+          gzip -9 -c work/full/en_ng.txt > dist/en_ng.txt.gz
+          gzip -9 -c work/web/en_ng.txt > dist/en_ng-web.txt.gz
+          gzip -9 -c work/lite/en_ng.txt > dist/en_ng-lite.txt.gz
+          gzip -9 -c work/lite/en_lex.txt > dist/en_lex-lite.txt.gz
+          gzip -9 -c work/lite/en_fix.txt > dist/en_fix-lite.txt.gz
+          cp work/out/vocab_sentences.txt.gz work/out/lm_report.json work/out/words_without_sentences.txt work/sent/sources.json dist/
+          gzip -9 -c work/out/heldout.txt > dist/heldout.txt.gz
+          cp work/eval_lm.txt work/eval_regression.txt work/train.log work/fetch.log dist/
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: english-lm
+          path: dist
+          retention-days: 30
+      - name: Publish as a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="english-lm-${{ github.run_number }}"
+          gh release create "$tag" dist/* --title "English language model $tag" --notes "Trained by the Train the English language model workflow (run ${{ github.run_number }}). See lm_report.json, sources.json and eval_lm.txt." --target "${{ github.sha }}"
