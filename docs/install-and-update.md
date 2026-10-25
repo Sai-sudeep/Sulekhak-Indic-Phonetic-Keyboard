@@ -31,6 +31,8 @@ The portable `Sulekhak-Windows*.exe` files still work but cannot appear in Win+S
 
 For anything unexpected, use the tray menu item **Check installation…**. It lists each check (registered, file present, in your list, pipe answers, word engine running, ARM), says who types and why, copies the report to the clipboard, and writes it to `%LOCALAPPDATA%\Sulekhak\sulekhak.log`. The Win+Space keyboard itself writes the problems it meets (never what you type) to `%LOCALAPPDATA%\Sulekhak\tip.log`. Sending those two files is enough to find the cause.
 
+The Win+Space keyboard also carries its own copy of the Odia engine (the same engine the Mac keyboard uses). If the Sulekhak program answers too slowly or is not running, the Odia, Hindi/Marathi, Bangla and Assamese keyboards still type real words from that copy instead of showing Roman letters; English needs the program. The keyboard now waits up to 0.7 s to send and 2 s for an answer (older, busy or slow-starting computers took longer than the earlier 0.3 s and 0.4 s), and after one miss it uses its own copy for 8 s before asking again.
+
 The installer no longer stops when Windows refuses the registration of the text service (`noregerror`): the installation completes and the program types with the hook. A refused single keyboard (a language your Windows edition does not have) no longer stops the others from being registered.
 
 
