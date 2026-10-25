@@ -308,6 +308,8 @@ jobs:
           Get-ChildItem ..\out
       - name: Install, upgrade while in use, repair, TSF driver, keyboard list, rollback, uninstall
         shell: pwsh
+        env:
+          SK_E2E_STRICT: '1'     # the installed program's pipe answers on a real runner (seen passing), so a regression now fails the build
         run: |
           $o = "apps\windows\out"
           & apps\windows\installer\test_install.ps1 -OldSetup "$o\Sulekhak-Windows-Setup-old.exe" -NewSetup "$o\Sulekhak-Windows-Setup-new.exe" `
