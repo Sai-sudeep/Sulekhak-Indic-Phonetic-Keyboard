@@ -60,17 +60,23 @@ jobs:
           if [ -n "$SK_B64" ] && [ -n "${{ secrets.SK_KEYSTORE_PASS }}" ]; then
             echo "$SK_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
             echo "SK_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "SK_KEYSTORE_PASS=${{ secrets.SK_KEYSTORE_PASS }}" >> "$GITHUB_ENV"
+            echo "SK_KEY_ALIAS=${{ secrets.SK_KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "SK_KEY_PASS=${{ secrets.SK_KEY_PASS }}" >> "$GITHUB_ENV"
             echo "signed=release" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning title=Android is NOT signed with the release key::Add the four secrets SK_KEYSTORE_B64, SK_KEYSTORE_PASS, SK_KEY_ALIAS, SK_KEY_PASS (Settings > Secrets and variables > Actions). Until then every APK is signed with a throw-away debug key and cannot be installed over the previous one."
-            echo "signed=debug" >> "$GITHUB_OUTPUT"
+            # No private release key in the repository secrets: every build of this repository is signed with ONE fixed, deliberately published key
+            # (android/ci/public-key.jks). It is not a secret and not a release identity; it only makes one public build update the previous one in place
+            # (a new throw-away key on every run is what made updates "conflict with the existing package").
+            P=apps/android/ci/public-key.properties
+            echo "SK_KEYSTORE_FILE=$GITHUB_WORKSPACE/apps/android/ci/public-key.jks" >> "$GITHUB_ENV"
+            echo "SK_KEYSTORE_PASS=$(sed -n 's/^password=//p' $P)" >> "$GITHUB_ENV"
+            echo "SK_KEY_ALIAS=$(sed -n 's/^alias=//p' $P)" >> "$GITHUB_ENV"
+            echo "SK_KEY_PASS=$(sed -n 's/^password=//p' $P)" >> "$GITHUB_ENV"
+            echo "signed=public" >> "$GITHUB_OUTPUT"
           fi
         # the passwords are read by gradle from the environment, never written to a file
       - name: Build the APKs (all-in-one, Odia, Devanagari, Assamese, Bangla), release signed
-        env:
-          SK_KEYSTORE_PASS: ${{ secrets.SK_KEYSTORE_PASS }}
-          SK_KEY_ALIAS: ${{ secrets.SK_KEY_ALIAS }}
-          SK_KEY_PASS: ${{ secrets.SK_KEY_PASS }}
         run: |
           # the version code only ever grows: minutes since 1970 (Android refuses an update whose number is not higher)
           VC=$(( $(date +%s) / 60 ))
@@ -106,10 +112,6 @@ jobs:
           done
           echo "no INTERNET permission in any APK"
       - name: Build the test pair for the emulator (previous release, and a forged update)
-        env:
-          SK_KEYSTORE_PASS: ${{ secrets.SK_KEYSTORE_PASS }}
-          SK_KEY_ALIAS: ${{ secrets.SK_KEY_ALIAS }}
-          SK_KEY_PASS: ${{ secrets.SK_KEY_PASS }}
         run: |
           mkdir -p apktest
           # "previous release": same key, lower version code
@@ -462,7 +464,7 @@ jobs:
           for e in Odia Devanagari Bangla Assamese Phonetic; do [ -f "out/Sulekhak-$e.exe" ] && mv "out/Sulekhak-$e.exe" "out/Sulekhak-Windows-$e.exe"; done
           ls -la out
           NOTE=""
-          if grep -q 'signed=debug' dl/Sulekhak-Android-apks/SIGNING.txt 2>/dev/null; then NOTE="WARNING: this Android build is signed with a temporary key (the release key is not set up in this repository yet), so it cannot be installed over a previous version: uninstall first. "; fi
+          if grep -q 'signed=public' dl/Sulekhak-Android-apks/SIGNING.txt 2>/dev/null; then NOTE="Android: every build of this repository is signed with the same fixed public key, so a new build installs over the previous one (builds made before 25 October 2026 used a different key: uninstall that one once). "; fi
           gh release delete latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
           gh release create latest out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
             --title "Sulekhak Phonetic Keyboard: Mac, Windows and Android" \
