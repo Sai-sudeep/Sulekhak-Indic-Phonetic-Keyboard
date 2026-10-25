@@ -130,6 +130,8 @@ Output script: from the input-source menu, or Control+Option+1 Odia, 2 Devanagar
 - **Android: [Sulekhak-Android.apk](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Android.apk)** (Android asks you to allow installing from your browser or files app; an older build must be uninstalled once, later ones update in place). Install it, open **Sulekhak**, switch the keyboard on, then choose it as your input method. It has the web keyboard's QWERTY layout, a number pad, symbols, emoji and Odia-letter pages, suggested next words, a globe key (and a long press on space) to change keyboard, a long press on a letter for its matras and conjuncts, a long press on the full stop for all punctuation, a long press on `'` or `~` for the rare signs, and, under **?123**, a page with every character of the script. Swipe typing is on from the start; the keyboard's ⚙ settings (*Swipe across the letters to type a word*) switch it off.
 - **Windows: [Sulekhak-Windows-Setup.exe](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Windows-Setup.exe)** (installer, needs administrator rights once). It registers Sulekhak as a real Windows text service: press **Win+Space** and choose *Sulekhak — All Languages*, *Odia*, *Hindi*, *Marathi*, *Bangla* or *Assamese*. Roman letters you type are shown as the word being typed, with the candidate window beside it; Space, Enter or a number picks. **Ctrl+Alt+K** shows the 3D on-screen keyboard. It needs the Microsoft Edge WebView2 runtime (already present on current Windows 10 and 11). Updating means running the new Setup.exe over the old one; uninstalling keeps your words. The older one-file program ([Sulekhak-Windows.exe](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/releases/latest/download/Sulekhak-Windows.exe)) still works without installing, as a keyboard hook (**Ctrl+Alt+O** on/off, **Ctrl+Alt+P** Phonetic/IPA). Windows may show a "SmartScreen" warning because the files are not code-signed: choose **More info, Run anyway**.
 
+**If the installed Windows app does not type:** it falls back to the keyboard-hook typing of the portable program whenever the Win+Space keyboard cannot work (no Sulekhak keyboard in your list yet, a refused registration, Windows on ARM), and the tray item **Check installation…** says why. Details: [docs/install-and-update.md](docs/install-and-update.md).
+
 Both keep the words you pick and offer them first next time. These two apps were built and compiled by GitHub but have had less hands-on testing than the Mac and web versions, so please report anything odd in [Issues](https://github.com/Sai-sudeep/Sulekhak-Indic-Phonetic-Keyboard/issues).
 
 ## 🧭 Keys that differ by platform
@@ -168,6 +170,7 @@ Type Odia the way it sounds, in English letters. A small box shows choices:
 | Space | accept the highlighted choice |
 | Enter | accept it with a space; press again for a new line |
 | ↑ ↓ Tab | move the highlight · ← → change page |
+| Shift+Tab (PC) | the next page of choices when there is more than one page, otherwise the previous choice |
 | Backspace | removes one letter · Esc cancels |
 | Z / z / ` (backtick) | halant + ZWNJ (୍‌) / ZWNJ alone (hold for ZWJ) / halant (୍) |
 | > | nukta (଼) for ଡ଼ ଢ଼ |
@@ -175,6 +178,7 @@ Type Odia the way it sounds, in English letters. A small box shows choices:
 Good to know
 - 🧠 Vowels optional. `pasnd`, `kn`, `pustk`, `krishna` find real words even if you skip or mix up vowels.
 - ❜ Apostrophe words. `kn` / `ka'na` → କ'ଣ · `tr` → ତା'ର · `mr` → ମୋ'ର · `ma` → ମା'
+  Both spellings are always offered side by side (ତା'ର and ତାର, କ'ଣ and କଣ), and the short head words also offer their usual phrases (ମା' ପାଖକୁ and ମା ପାଖକୁ, କ'ଣ ପାଇଁ and କଣ ପାଇଁ …).
 - 🔤 Abbreviations. `pa` → ପି.ଏ. (also PA, P.A., ପିଏ)
 - ୟ vs ଯ: `y` gives ୟ first and ଯ a little later (`kaifiyat` → କୈଫିୟତ୍, `yoga` → ୟୋଗ · ଯୋଗ); `j` gives ଜ first, then ଯ. `w` is only ୱ.
 - Z after a word (`ghar` + Shift+Z) gives ଘର୍‌ (halant + ZWNJ) first, not a guess.
