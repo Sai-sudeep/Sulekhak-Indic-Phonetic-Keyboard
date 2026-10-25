@@ -318,6 +318,7 @@ jobs:
               -OldVer $env:OLDVER -NewVer $env:NEWVER -Driver "apps\windows\tip\build\tip_driver.exe" -AddKeyboardsScript "apps\windows\res\AddKeyboards.ps1" -LaunchDll (Resolve-Path "apps\windows\tip\build\sulekhak_tip_x64.dll").Path
           if ($LASTEXITCODE) { exit 1 }
       - name: A real window, real key presses and screenshots (installed program and keyboard; Backspace, word list)
+        if: always()
         shell: pwsh
         continue-on-error: true       # reported loudly and kept as screenshots; made blocking once it has been seen to pass on a runner
         run: |
