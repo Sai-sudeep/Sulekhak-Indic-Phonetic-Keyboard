@@ -6,7 +6,7 @@ name: Train the English language model
 # Start it from the Actions tab (Run workflow) or by changing english-lm.trigger (a line `scale=small` there makes it a trial run).
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: english-lm
@@ -64,7 +64,7 @@ jobs:
       - name: Train
         run: |
           python3 apps/core/english/build/lm/build_lm.py --lex work/base/en_lex.txt --ng-old work/base/en_ng.txt --sent work/sent --out work/out \
-            --parts 32 --tg-budget-mb 40 2>&1 | tee work/train.log
+            --parts 32 --tg-budget-mb 24 2>&1 | tee work/train.log
         env:
           PYTHONUNBUFFERED: '1'
       - name: Assemble the full and the small tiers
@@ -95,9 +95,21 @@ jobs:
           name: english-lm
           path: dist
           retention-days: 30
+
+  publish:
+    needs: train
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: english-lm
+          path: dist
       - name: Publish as a release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          ls -la dist
           tag="english-lm-${{ github.run_number }}"
-          gh release create "$tag" dist/* --title "English language model $tag" --notes "Trained by the Train the English language model workflow (run ${{ github.run_number }}). See lm_report.json, sources.json and eval_lm.txt." --target "${{ github.sha }}"
+          gh release create "$tag" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "English language model $tag" --notes "Trained by the Train the English language model workflow (run ${{ github.run_number }}). See lm_report.json, sources.json and eval_lm.txt."
