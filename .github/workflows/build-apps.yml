@@ -275,6 +275,7 @@ jobs:
   windows-installer:
     needs: [windows, core-tests]
     runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Unpack sources
@@ -321,6 +322,7 @@ jobs:
         if: always()
         shell: pwsh
         continue-on-error: true       # reported loudly and kept as screenshots; made blocking once it has been seen to pass on a runner
+        timeout-minutes: 8
         run: |
           & apps\windows\installer\test_gui.ps1 -Setup "apps\windows\out\Sulekhak-Windows-Setup-new.exe" -Driver "apps\windows\tip\build\tip_driver.exe" -OutDir gui -AddKeyboardsScript "apps\windows\res\AddKeyboards.ps1"
           if ($LASTEXITCODE) { Write-Host "::warning::the real-window test reported failures, see the screenshots and result.txt in the windows-gui artifact"; exit 1 }
