@@ -246,7 +246,7 @@ jobs:
         run: |
           cd apps/windows/tip
           sh build.sh build
-          x86_64-w64-mingw32-g++ -std=c++17 -O1 -w -static -static-libgcc -static-libstdc++ -o build/tip_driver.exe tests/tip_driver.cpp -lole32 -loleaut32 -luuid -ladvapi32 -luser32
+          x86_64-w64-mingw32-g++ -std=c++17 -O1 -w -static -static-libgcc -static-libstdc++ -o build/tip_driver.exe tests/tip_driver.cpp -lole32 -loleaut32 -luuid -ladvapi32 -luser32 -lgdi32
       - name: Get the language data from the live site (for the swipe evaluation)
         run: |
           mkdir -p /tmp/pack/compact
@@ -317,6 +317,18 @@ jobs:
           & apps\windows\installer\test_install.ps1 -OldSetup "$o\Sulekhak-Windows-Setup-old.exe" -NewSetup "$o\Sulekhak-Windows-Setup-new.exe" `
               -OldVer $env:OLDVER -NewVer $env:NEWVER -Driver "apps\windows\tip\build\tip_driver.exe" -AddKeyboardsScript "apps\windows\res\AddKeyboards.ps1" -LaunchDll (Resolve-Path "apps\windows\tip\build\sulekhak_tip_x64.dll").Path
           if ($LASTEXITCODE) { exit 1 }
+      - name: A real window, real key presses and screenshots (installed program and keyboard; Backspace, word list)
+        shell: pwsh
+        continue-on-error: true       # reported loudly and kept as screenshots; made blocking once it has been seen to pass on a runner
+        run: |
+          & apps\windows\installer\test_gui.ps1 -Setup "apps\windows\out\Sulekhak-Windows-Setup-new.exe" -Driver "apps\windows\tip\build\tip_driver.exe" -OutDir gui -AddKeyboardsScript "apps\windows\res\AddKeyboards.ps1"
+          if ($LASTEXITCODE) { Write-Host "::warning::the real-window test reported failures, see the screenshots and result.txt in the windows-gui artifact"; exit 1 }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-gui-screenshots
+          path: gui/*
+          if-no-files-found: ignore
       - name: Logs of the installer runs
         if: always()
         shell: pwsh
