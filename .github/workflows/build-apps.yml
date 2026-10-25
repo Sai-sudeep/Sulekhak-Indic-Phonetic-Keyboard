@@ -227,6 +227,7 @@ jobs:
         run: |
           node apps/core/keymap/run_vectors.js
           node apps/core/keymap/run_nukta.js
+          node apps/core/odia/apos_test.js
       - name: The generated tables are in step with the specification
         run: |
           mkdir -p /tmp/gen && node apps/core/keymap/gen_cs.js /tmp/gen /tmp/gen /tmp/gen

@@ -23,6 +23,17 @@ If you used the old single `.exe`: install the Setup.exe, then delete the old `.
 
 The portable `Sulekhak-Windows*.exe` files still work but cannot appear in Win+Space; they use the older keyboard hook. Set the `ForceHook` setting to 1 to use hook mode even when the installer is present.
 
+**If the installed Sulekhak does not type.** The installed program decides by itself who types, and never leaves you without typing:
+
+* If the Sulekhak keyboard works on your computer (it is registered, its file is there, it is in your Win+Space list, and it can reach the program), Windows delivers the keys and you choose the keyboard with **Win+Space**. English and the other Win+Space features need this mode.
+* If any of those is not true (the keyboards are not in your list yet, the registration was refused, the file is missing, or the computer is Windows for ARM, where a 64-bit-Intel text service cannot be loaded by ARM programs), Sulekhak types with its keyboard hook, exactly like the portable program: Roman letters turn into your script in the programs you type in, and **Ctrl+Alt+O** switches it off and on. The tray balloon says which mode is active and why.
+* The decision is repeated every 20 seconds, so adding the keyboards later (tray menu, *Add Sulekhak keyboards to Windows…*) switches to Windows typing by itself.
+
+For anything unexpected, use the tray menu item **Check installation…**. It lists each check (registered, file present, in your list, pipe answers, word engine running, ARM), says who types and why, copies the report to the clipboard, and writes it to `%LOCALAPPDATA%\Sulekhak\sulekhak.log`. The Win+Space keyboard itself writes the problems it meets (never what you type) to `%LOCALAPPDATA%\Sulekhak\tip.log`. Sending those two files is enough to find the cause.
+
+The installer no longer stops when Windows refuses the registration of the text service (`noregerror`): the installation completes and the program types with the hook. A refused single keyboard (a language your Windows edition does not have) no longer stops the others from being registered.
+
+
 Not yet covered: the installer is not code-signed (Windows SmartScreen may warn). A signing certificate can be added through the `SignTool` define in `Sulekhak.iss` without other changes.
 
 ## Android
