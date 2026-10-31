@@ -125,10 +125,12 @@ jobs:
           ls -la apktest
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: Sulekhak-Android-test-apks
           path: apktest/*.apk
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: Sulekhak-Android-apks
           path: |
             apk/*.apk
@@ -176,6 +178,7 @@ jobs:
           ls out
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: win-${{ matrix.file }}
           path: out/${{ matrix.file }}.exe
 
@@ -261,12 +264,14 @@ jobs:
                --out /tmp/swipe_result.json --assert "top1>=72,top3>=85,top8>=90,p95<=400" | tee /tmp/swipe_summary.txt
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: tip-dlls
           path: |
             apps/windows/tip/build/*.dll
             apps/windows/tip/build/tip_driver.exe
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: swipe-eval-result
           path: |
             /tmp/swipe_result.json
@@ -340,6 +345,7 @@ jobs:
         shell: pwsh
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: win-installer
           path: apps/windows/out/Sulekhak-Windows-Setup.exe
 
@@ -382,6 +388,7 @@ jobs:
           [ ! -d "$UIM/OdiaPhonetic.app" ] && [ -f "$SUP/upgrade_marker" ] && echo "uninstall ok, data kept"
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: Sulekhak-Mac-dmgs
           path: macsrc/OdiaPhonetic-Mac/dist/*.dmg
 
@@ -444,6 +451,7 @@ jobs:
           ls -la Sulekhak-iPad.ipa
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 2
           name: Sulekhak-iPad-ipa
           path: apps/ios/Sulekhak-iPad.ipa
 
