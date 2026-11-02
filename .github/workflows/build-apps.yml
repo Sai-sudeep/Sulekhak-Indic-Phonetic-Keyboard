@@ -97,7 +97,20 @@ jobs:
           AS=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)apksigner
           WANT=$(tr -d ':\n ' < apps/android/release-cert.sha256 | tr A-F a-f)
           for f in apk/*.apk; do
-            "$AS" verify --verbose "$f" | head -3
+            # the installer on a phone is stricter than a build tool: check the signature for every Android version the app supports (8 to 14),
+            # with all three signature schemes present (some makers' installers read only the v1 JAR signature, others only v2 / v3)
+            "$AS" verify --verbose --min-sdk-version 26 --max-sdk-version 34 "$f" > /tmp/verify.txt || { cat /tmp/verify.txt; echo "::error::$f does not verify for Android 8 to 14"; exit 1; }
+            head -6 /tmp/verify.txt
+            for sch in "v2 scheme (APK Signature Scheme v2)" "v3 scheme (APK Signature Scheme v3)"; do
+              grep -q "Verified using $sch: true" /tmp/verify.txt || { echo "::error::$f is not signed with the $sch"; exit 1; }
+            done
+            # apksigner skips the v1 check when the app's lowest Android version already has v2, so look for the v1 files and verify them as an old phone would
+            unzip -l "$f" | grep -q 'META-INF/.*\.SF' || { echo "::error::$f has no v1 (JAR) signature"; exit 1; }
+            "$AS" verify --verbose --min-sdk-version 21 --max-sdk-version 23 "$f" 2>&1 | grep -E "Verified using v1|DOES NOT VERIFY|ERROR" | head -3 || true
+            ZA=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)zipalign
+            "$ZA" -c -P 16 4 "$f" || "$ZA" -c 4 "$f" || { echo "::error::$f is not zip-aligned"; exit 1; }
+            AAPT2=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)aapt2
+            { echo "### $f"; "$AAPT2" dump badging "$f" | grep -E "^package:|sdkVersion|targetSdkVersion" | sed 's/^/    /'; "$AS" verify --verbose --min-sdk-version 26 --max-sdk-version 34 "$f" | head -5 | sed 's/^/    /'; ls -l "$f" | awk '{print "    size " $5 " bytes"}'; } >> "$GITHUB_STEP_SUMMARY"
             GOT=$("$AS" verify --print-certs "$f" | grep 'certificate SHA-256 digest' | head -1 | awk '{print $NF}')
             echo "$f  cert SHA-256 $GOT"
             if [ "${{ steps.key.outputs.signed }}" = release ] && [ "$GOT" != "$WANT" ]; then echo "::error::$f is not signed with the release key"; exit 1; fi
@@ -185,6 +198,10 @@ jobs:
   android-upgrade-test:
     needs: android
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 30, 33]          # Android 8, 11 and 13
     steps:
       - uses: actions/checkout@v4
       - name: Unpack sources
@@ -197,10 +214,10 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Install, upgrade, refuse a forged update, uninstall (Android 11 emulator)
+      - name: Install, upgrade, refuse a forged update, uninstall (Android emulator, API ${{ matrix.api }})
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           script: bash apps/android/ci/upgrade_test.sh dl/Sulekhak-Android-test-apks/old.apk dl/Sulekhak-Android-apks/Sulekhak-Android.apk dl/Sulekhak-Android-test-apks/other.apk
