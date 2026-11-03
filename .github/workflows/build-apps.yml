@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unpack sources and the English data
         run: |
-          tar xzf apps/src.tar.gz -C apps
+          tar xzf apps/src.tar.gz -C apps && (python3 apps/overlay_fix.py apps || python apps/overlay_fix.py apps)
           mkdir -p apps/english-data && tar xzf apps/english-data.tar.gz -C apps/english-data
       - name: Get the language data from the live site
         run: |
@@ -165,7 +165,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unpack sources
         shell: bash
-        run: tar xzf apps/src.tar.gz -C apps
+        run: tar xzf apps/src.tar.gz -C apps && (python3 apps/overlay_fix.py apps || python apps/overlay_fix.py apps)
       - name: Get the language data from the live site
         shell: bash
         run: |
@@ -205,7 +205,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Unpack sources
-        run: tar xzf apps/src.tar.gz -C apps
+        run: tar xzf apps/src.tar.gz -C apps && (python3 apps/overlay_fix.py apps || python apps/overlay_fix.py apps)
       - uses: actions/download-artifact@v4
         with:
           path: dl
@@ -227,7 +227,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Unpack sources
-        run: tar xzf apps/src.tar.gz -C apps
+        run: tar xzf apps/src.tar.gz -C apps && (python3 apps/overlay_fix.py apps || python apps/overlay_fix.py apps)
       - name: Tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq mono-mcs mono-runtime g++ g++-mingw-w64-x86-64 g++-mingw-w64-i686
       - name: English suggestions - held-out accuracy gates (completion, spelling, false corrections, speed) and swipe on simulated paths
@@ -302,7 +302,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unpack sources
         shell: bash
-        run: tar xzf apps/src.tar.gz -C apps
+        run: tar xzf apps/src.tar.gz -C apps && (python3 apps/overlay_fix.py apps || python apps/overlay_fix.py apps)
       - uses: actions/download-artifact@v4
         with:
           name: win-Sulekhak
@@ -416,7 +416,7 @@ jobs:
       - name: Unpack the iPad and iPhone keyboard source and the English data
         run: |
           tar xzf apps/ios-src.tar.gz -C apps
-          tar xzf apps/src.tar.gz -C apps
+          tar xzf apps/src.tar.gz -C apps && (python3 apps/overlay_fix.py apps || python apps/overlay_fix.py apps)
           mkdir -p apps/english-data && tar xzf apps/english-data.tar.gz -C apps/english-data && gunzip apps/english-data/*.gz
       - name: The calls the app makes into the scripts (node, with the same shims as the app)
         run: node apps/core/sync/host_test.js apps/ios/Shared/js
