@@ -396,3 +396,8 @@ if os.path.exists(_p):                           # every place where a new word 
     if 'dropSelection()) autoSpace = false; prevCtx' not in _t2: _bad.append('SulekhakIME.java: no place where a word starts found')
 if _bad: sys.exit('overlay_fix: selection editing: expected text not found exactly once in:\n  ' + '\n  '.join(_bad))
 print('overlay_fix: selection editing applied')
+# the Unicode symbols palette (Win+, / Option+, / the Omega key): its own script, apps/overlay_palette.py, with the files in apps/palette/
+_pal = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'overlay_palette.py')
+if os.path.exists(_pal):
+    import subprocess
+    if subprocess.call([sys.executable, _pal, root]) != 0: sys.exit('overlay_fix: the Unicode symbols palette could not be applied')
