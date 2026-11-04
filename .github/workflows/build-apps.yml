@@ -372,6 +372,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unpack the Mac source
         run: unzip -q Sulekhak-Mac.zip -d macsrc
+      - name: Add the Unicode symbols palette (Option+comma)
+        run: python3 apps/overlay_palette.py --mac macsrc/OdiaPhonetic-Mac
       - name: English typing, run for real (the C++ rules, the JavaScript engine in JavaScriptCore, the learning file)
         run: |
           cd macsrc/OdiaPhonetic-Mac
