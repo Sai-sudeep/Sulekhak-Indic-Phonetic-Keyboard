@@ -202,6 +202,22 @@ Select some text, type an opening mark, and the selection is wrapped instead of 
 | iPhone / iPad keyboard | the **( )** button at the right of the suggestion bar | caret after the closing mark |
 | Keyman packages | not available (Keyman gives keyboards no access to the selection) | |
 
+## 🔣 Unicode symbols palette
+
+Arrows, mathematical operators, comparisons, logic, sets, punctuation, typography, IPA, diacritics, superscripts, subscripts, Greek letters, scientific symbols, shapes, currency, fractions, enclosed characters, computing symbols and the invisible Unicode characters (ZWNJ, ZWJ, no-break space and more) are one shortcut away, in every app. Each category is its own row that scrolls sideways on its own, so everything is visible at once and nothing is hidden behind tabs. Search by name or by code point (`U+2192`), mark favourites, and see the recent ones first. Combining marks are drawn on a no-break space and inserted alone, so no dotted circle is ever typed.
+
+| | How to open it | What a tap does |
+|---|---|---|
+| 🍎 Mac | **Option + ,** or the input-source menu → **Unicode symbols** | types the character at the cursor of the app you are in (a selection is replaced); when no text field is active the symbol is copied to the clipboard and a short *Copied* note appears |
+| 🪟 Windows | **Win + ,** (or **Ctrl + Alt + ,**) or the tray icon → **Unicode symbols palette** | same as Mac |
+| 🌐 web typist | **Option + ,** (Mac) or **Alt + ,** (Windows, Linux), or the **Symbols** button | types at the cursor of the typing box, otherwise copies |
+| 🤖 Android | **?123** → **Ω** key | types at the cursor |
+| 📱 iPad · iPhone | **Ω** button in the row above the suggestions | types at the cursor |
+
+On Mac and Windows the palette is a small floating window you can drag and resize. It never takes the focus from the app you are typing in, closes when you click outside it or press the shortcut again, and has a pin button (top right) that keeps it open while you click elsewhere; the close button and the shortcut still close it. Its size and position are remembered. On a Mac, Option + , now opens the palette instead of typing `≤`.
+
+Not covered: Keyman keyboards (Keyman does not let a keyboard add a window), and on iPhone and iPad a keyboard only appears in a text field, so a symbol is always typed there, never copied. The Mac and Windows palettes find out whether a text field is active by asking the system; apps that do not answer that question are treated as "no text field", and the symbol is copied instead of typed.
+
 ## 🌐 Try it in the browser
 Same engine, no install: [Sulekhak, the web typist](https://sai-sudeep.github.io/assets/tools/sulekhak.html). It also writes Devanagari, Assamese (ৰ, ৱ), Bangla, English, and a **Phonetic** mode: type a key, then pick the IPA, extIPA or IAST symbols that *look like* that key (hover a key, or long-press it on a phone or iPad, to see them all). It has a realistic 3D keyboard guide drawn as the keyboard you use (Mac, Windows, iPad / iPhone or Android) that can be detached, pinned, zoomed and resized, and it works on phones and tablets: slide a finger across the letters to type a whole word, hold and drag the space bar to move the cursor, hold the full stop for every punctuation mark, open the symbols and emoji page from the bottom-left key, double-tap a word, triple-tap a paragraph, drag the selection handles.
 It also plugs into [OMMNISKRIPT](https://sai-sudeep.github.io/assets/tools/ommniskript.html) as a "Write in" pad.
