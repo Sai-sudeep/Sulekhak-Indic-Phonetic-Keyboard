@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sulekhak symbols</title>
+<style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}</style></head>
+<body>
+<script src="sk-palette-data.js"></script>
+<script src="sk-palette.js"></script>
+<script>
+// A native window shows this page. The program around it (PalettePanel.m on the Mac, SymbolsForm.cs on Windows) moves, sizes, shows and hides the window and puts the character
+// into the focused program; see the message list at the top of sk-palette.js.
+SKPalette.mount({mode:'window',shortcutLabel:/Mac/.test(navigator.platform)?'Option+,':'Win+,'});
+</script>
+</body></html>
