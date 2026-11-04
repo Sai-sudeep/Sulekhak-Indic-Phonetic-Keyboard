@@ -169,8 +169,9 @@ def mac(m):
     c = os.path.join(m, 'src', 'OdiaController.m')
     sub(c, '#import "OSKPanel.h"\n', '#import "OSKPanel.h"\n#import "PalettePanel.h"\n', '#import "PalettePanel.h"')
     sub(c, 'static __weak OdiaController *gActive;', 'static BOOL gClientLive = NO;           // the input method is active in a text box right now (the symbols palette types through it)\nstatic __weak OdiaController *gActive;', 'gClientLive = NO')
-    sub(c, '- (void)activateServer:(id)sender { gActive = self; _client = sender; [super activateServer:sender]; }',
-           '- (void)activateServer:(id)sender { gActive = self; _client = sender; gClientLive = YES; [super activateServer:sender]; }', 'gClientLive = YES; [super')
+    # the start of the line is the same in the public and in the personal sources (the personal one has one more call after it)
+    sub(c, '- (void)activateServer:(id)sender { gActive = self; _client = sender; ',
+           '- (void)activateServer:(id)sender { gActive = self; _client = sender; gClientLive = YES; ', 'sender { gActive = self; _client = sender; gClientLive = YES; ')
     sub(c, '/// Add to Sulekhak Dictionary without the Accessibility permission', '''/// A symbol from the Unicode palette: the real character, as it is (no script conversion), at the caret of the active text box; a selection is replaced.
 /// NO when the input method is not active in a text box (the palette then types it with a key event or copies it).
 + (BOOL)insertRawText:(NSString *)t {
