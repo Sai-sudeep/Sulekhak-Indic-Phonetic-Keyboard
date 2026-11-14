@@ -1,0 +1,367 @@
+diff -ruN pa/Info.plist pb/Info.plist
+--- a/Info.plist	2026-11-13 21:38:37.362918864 +0000
++++ b/Info.plist	2026-11-13 21:38:37.364594835 +0000
+@@ -9,8 +9,8 @@
+   <key>CFBundleName</key><string>ସୁलेখk</string>
+   <key>CFBundleDisplayName</key><string>ସୁलेখk</string>
+   <key>CFBundlePackageType</key><string>APPL</string>
+-  <key>CFBundleShortVersionString</key><string>3.4</string>
+-  <key>CFBundleVersion</key><string>18</string>
++  <key>CFBundleShortVersionString</key><string>3.6</string>
++  <key>CFBundleVersion</key><string>22</string>
+   <key>LSMinimumSystemVersion</key><string>11.0</string>
+   <key>LSUIElement</key><true/>
+   <key>NSPrincipalClass</key><string>NSApplication</string>
+diff -ruN pa/build.sh pb/build.sh
+--- a/build.sh	2026-11-13 21:38:37.354279474 +0000
++++ b/build.sh	2026-11-13 21:38:37.355968934 +0000
+@@ -59,7 +59,7 @@
+ for ARCH in arm64 x86_64; do
+   COMMON="-O2 -arch $ARCH -mmacosx-version-min=11.0 $EDFLAG $PFLAG -Isrc"
+   OBJS=""
+-  for f in main OdiaController SKEngine OSKPanel PalettePanel SuggestBar SKLearn SKPersonal; do
++  for f in main OdiaController SKEngine OSKPanel PalettePanel SuggestBar SKLearn SKPersonal SKKeyPass; do
+     clang -fobjc-arc $COMMON -c "src/$f.m" -o "$OBJ/$f-$ARCH.o" || exit 1; OBJS="$OBJS $OBJ/$f-$ARCH.o"
+   done
+   clang $COMMON -c src/engine.c -o "$OBJ/engine-$ARCH.o" || exit 1; OBJS="$OBJS $OBJ/engine-$ARCH.o"
+diff -ruN pa/src/OSKPanel.m pb/src/OSKPanel.m
+--- a/src/OSKPanel.m	2026-11-13 21:38:37.336605288 +0000
++++ b/src/OSKPanel.m	2026-11-13 21:38:37.338761021 +0000
+@@ -138,7 +138,7 @@
+     gScriptHKOn = want;
+ }
+ static void SKSourceChangedCB(CFNotificationCenterRef c, void *o, CFNotificationName n, const void *obj, CFDictionaryRef info) {
+-    dispatch_async(dispatch_get_main_queue(), ^{ SKSyncScriptHotKeys(); });
++    dispatch_async(dispatch_get_main_queue(), ^{ SKSyncScriptHotKeys(); if (!SKMySourceIsCurrent()) { Class k = NSClassFromString(@"OdiaController"); if ([k respondsToSelector:@selector(hideAllPanels)]) [k performSelector:@selector(hideAllPanels)]; } });
+ }
+ + (void)syncScriptHotKeys { SKSyncScriptHotKeys(); }
+ + (void)installScriptHotKeys {
+diff -ruN pa/src/OdiaController.m pb/src/OdiaController.m
+--- a/src/OdiaController.m	2026-11-13 21:38:37.326909911 +0000
++++ b/src/OdiaController.m	2026-11-13 21:38:37.328778495 +0000
+@@ -7,6 +7,7 @@
+ #import "SKLearn.h"
+ #import "SKEnglishTyper.h"
+ #import "SKPersonal.h"
++#import "SKKeyPass.h"
+ #ifndef SK_PERSONAL
+ #define SK_PERSONAL 0
+ #endif
+@@ -62,7 +63,20 @@
+     if (c >= 0x0980 && c <= 0x09FF) return c + 0x180;
+     return c;
+ }
+-static NSString *NuktaStr(void) { return [NSString stringWithFormat:@"%C", (unichar)(gScript == 1 ? 0x093C : (gScript == 2 || gScript == 5) ? 0x09BC : 0x0B3C)]; }
++// These are combining marks, so the script must always come from either the
++// selected Indic mode or (when editing committed text) the character being
++// changed. IPA and English deliberately have no nukta fallback.
++static NSString *NuktaForScript(int script) {
++    unichar mark = script == 1 ? 0x093C : (script == 2 || script == 5) ? 0x09BC : script == 0 ? 0x0B3C : 0;
++    return mark ? [NSString stringWithFormat:@"%C", mark] : nil;
++}
++static NSString *NuktaStr(void) { return NuktaForScript(gScript); }
++static NSString *NuktaForCharacter(unichar c) {
++    if (c >= 0x0900 && c <= 0x097F) return @"\u093C";       // Devanagari
++    if (c >= 0x0980 && c <= 0x09FF) return @"\u09BC";       // Bangla / Assamese
++    if (c >= 0x0B00 && c <= 0x0B7F) return @"\u0B3C";       // Odia
++    return nil;
++}
+ 
+ 
+ // ---- Assamese only (mirrors asRefine in engine.js): a typed v / w gives ৱ, ত্ also gets its ৎ spelling beside it, and the typed text stays in slot 2.
+@@ -429,6 +443,9 @@
+     id _client;      // the app being typed into, kept so a mouse click on the window can finish the word
+     BOOL _navd;      // the highlight was moved with Tab / arrows / Page keys: Return then picks with a space
+     NSString *_markedShown;   // the text last handed to the app as marked text (nil when none is showing)
++    __weak id _lastNuktaClient;       // client and exact text from the most recent committed Sulekhak choice
++    NSString *_lastNuktaText;         // used only when an IMK client will not give its preceding text back
++    NSUInteger _lastNuktaCaret;
+     SKEnglishTyper *_en;      // English typing (script 6): the typing rules, and where they show their list
+ }
+ 
+@@ -468,6 +485,12 @@
+ - (void)activateServer:(id)sender { gActive = self; _client = sender; gClientLive = YES; [OSKPanel syncScriptHotKeys]; [super activateServer:sender]; }
+ 
+ /// A ready-made piece of Odia from the on-screen keyboard's long-press popup: finish the word being typed, then put the piece in.
++// Called when the selected input source changes to something that is not Sulekhak: nothing of ours may stay on screen (the white candidate box, the strip).
+++ (void)hideAllPanels {
++    OdiaController *c = gActive;
++    if (c) { [c->_panel hide]; }
++    [[SuggestBar shared] clear]; [[SuggestBar shared] hideTouchBarNow];
++}
+ + (void)oskInsert:(NSString *)t {
+     OdiaController *c = gActive;
+     if (!c || !c->_client || t.length == 0) return;
+@@ -552,7 +575,22 @@
+     [client insertText:s replacementRange:rep];
+ }
+ 
+-- (void)reset { _markedShown = nil; [_buf setString:@""]; [_cands removeAllObjects]; [_odiaCands removeAllObjects]; _sel = 0; _navd = NO; [_panel hide]; }
++- (void)clearNuktaCache { _lastNuktaClient = nil; _lastNuktaText = nil; _lastNuktaCaret = NSNotFound; }
++
++- (void)rememberNuktaText:(NSString *)text client:(id<IMKTextInput>)client {
++    [self clearNuktaCache];
++    if (!text.length) return;
++    @try {
++        NSRange sr = [client selectedRange];
++        if (sr.location != NSNotFound && sr.length == 0) {
++            _lastNuktaClient = client;
++            _lastNuktaText = [text copy];
++            _lastNuktaCaret = sr.location;
++        }
++    } @catch (NSException *e) {}
++}
++
++- (void)reset { _markedShown = nil; [self clearNuktaCache]; [_buf setString:@""]; [_cands removeAllObjects]; [_odiaCands removeAllObjects]; _sel = 0; _navd = NO; [_panel hide]; }
+ 
+ - (void)movePage:(NSInteger)d client:(id)client {
+     NSInteger pages = ((NSInteger)_cands.count + ODIA_PAGE - 1) / ODIA_PAGE;
+@@ -631,7 +669,7 @@
+                 [_odiaCands insertObject:L atIndex:0]; [_cands insertObject:Conv(L) atIndex:0];
+             }
+         }
+-    } else if ([SKEngine shared].ready && SKLettersOnly(_buf)) {
++    } else if ([SKEngine shared].ready && SKLettersOnly(_buf) && !(_buf.length == 1 && [@"mMhH" containsString:_buf])) {   // a lone m / M / h / H keeps the engine's own list (ମ ଂ ଁ / ହ ଃ), no word suggestions in front
+         NSArray *sk = [[SKEngine shared] suggest:_buf prev:[self skPrevWord:client]];
+         if (sk.count) {
+             NSMutableArray *O = [NSMutableArray new], *D = [NSMutableArray new]; NSMutableSet *seen = [NSMutableSet new];
+@@ -660,7 +698,7 @@
+     // A lone ` (halant), z (ZWNJ) or Z (halant + ZWNJ) is a joiner, not a letter: the choice list is shown but NO marked text is put into the
+     // app. Some apps (Google Sheets / Chrome, Word) treat a marked mark as part of the neighbouring letters and, when the choice is taken,
+     // replace the letter on the right of the caret as well. Without marked text the choice is simply inserted at the caret.
+-    BOOL joinerOnly = (_buf.length == 1 && ([_buf isEqualToString:@"`"] || [_buf isEqualToString:@"z"] || [_buf isEqualToString:@"Z"]));
++    BOOL joinerOnly = (_buf.length == 1 && ([_buf isEqualToString:@"`"] || [_buf isEqualToString:@"z"] || [_buf isEqualToString:@"Z"] || [_buf isEqualToString:@"~"] || [_buf isEqualToString:@"M"] || [_buf isEqualToString:@"H"]));   // ~ M H list combining marks (ଁ ଂ ଃ ...): same rule, no marked text
+     if (joinerOnly) {
+         _markedShown = nil;
+     } else {
+@@ -692,7 +730,8 @@
+     NSString *roman = [_buf copy];
+     // a choice picked with a number key or the mouse is followed by a space at once, unless the word goes on (halant, ZWNJ, bare sign)
+     BOOL autoSpace = bySel && !suffix.length && !WordContinues(word);
+-    [self insert:suffix.length ? [word stringByAppendingString:suffix] : (autoSpace ? [word stringByAppendingString:@" "] : word) client:client];
++    NSString *committed = suffix.length ? [word stringByAppendingString:suffix] : (autoSpace ? [word stringByAppendingString:@" "] : word);
++    [self insert:committed client:client];
+     // remember picks so they rank higher next time (position 2 is the English text, so it is not learned)
+     NSString *oword = StrictWord((i < (NSInteger)_odiaCands.count) ? _odiaCands[i] : word);
+     BOOL hasOdia = NO; for (NSUInteger q = 0; q < oword.length; q++) if ([oword characterAtIndex:q] > 127) { hasOdia = YES; break; }
+@@ -707,6 +746,7 @@
+         gPrevOdia = (suffix.length || autoSpace) ? [oword copy] : nil;
+     }
+     [self reset];
++    [self rememberNuktaText:committed client:(id<IMKTextInput>)client];
+     _pendingSpace = NO;
+     // the words that usually come next, shown on the 3D keyboard strip and the Touch Bar
+     NSArray *nx = (hasOdia && (suffix.length || autoSpace) && ![self digitMode]) ? [[SKEngine shared] nextAfter:oword] : nil;
+@@ -789,12 +829,12 @@
+             case 121: [self movePage:1 client:sender]; return YES;
+             case 123: case 124:
+                 if ((n + ODIA_PAGE - 1) / ODIA_PAGE > 1) { [self movePage:(kc == 123 ? -1 : 1) client:sender]; return YES; }
+-                [self phCommitIndex:_sel client:sender suffix:nil]; return NO;                                       // one page only: keep it, then move the caret
++                [self phCommitIndex:_sel client:sender suffix:nil]; return SKPassKeyAfterCommit(event);              // one page only: keep it, then move the caret
+         }
+     }
+     NSString *s = event.characters;
+     unichar c = s.length == 1 ? [s characterAtIndex:0] : 0;
+-    if (c < 32 || c == 127 || (c >= 0xF700 && c <= 0xF8FF)) { if (composing) [self phCommitIndex:_sel client:sender suffix:nil]; return NO; }
++    if (c < 32 || c == 127 || (c >= 0xF700 && c <= 0xF8FF)) { if (composing) { [self phCommitIndex:_sel client:sender suffix:nil]; return SKPassKeyAfterCommit(event); } return NO; }
+     if (composing && c >= '1' && c <= '9' && !(_buf.length == 1 && [_buf characterAtIndex:0] >= '0' && [_buf characterAtIndex:0] <= '9')) {
+         NSInteger i = (_sel / ODIA_PAGE) * ODIA_PAGE + (c - '1');
+         if (i < n) { [self phCommitIndex:i client:sender suffix:nil]; return YES; }
+@@ -822,6 +862,7 @@
+ - (BOOL)skHandleEvent:(NSEvent *)event client:(id)sender {
+     if (event.type != NSEventTypeKeyDown) return NO;
+     gActive = self; _client = sender; gClientLive = YES;
++    if (SKKeyIsReposted(event)) return NO;                               // a key press Sulekhak sent again after finishing a word (SKKeyPass): the application takes it as it is
+     if ([[PalettePanel shared] handleSearchKey:event]) return YES;        // typing goes to the symbols palette's search box while it has the typing
+     NSEventModifierFlags f = event.modifierFlags;
+     unsigned short kc = event.keyCode;
+@@ -870,17 +911,20 @@
+         if (![_en composing] && !(f & (NSEventModifierFlagCommand | NSEventModifierFlagControl | NSEventModifierFlagOption)) && SKSurroundOn() && evc.length == 1 && [kSurrOpen rangeOfString:evc].location != NSNotFound && [self surroundSelectionIn:(id<IMKTextInput>)sender with:evc]) return YES;
+         return [_en handleEvent:event client:sender];
+     }
++    // The shortcuts below finish the word and then belong to the application. Answering NO in the same key press in which the word was written
++    // made Chrome, Google Sheets and other applications drop the shortcut (the first Cmd+A only finished the word). So after the word is written
++    // the key press is kept back and sent again a moment later (SKPassKeyAfterCommit); without the Accessibility permission it is the old way.
+     if (cmd || ctl || opt) {                              // every shortcut: Option+arrows (word), Cmd+arrows (line), Ctrl+A/E/F/B (Emacs keys), Cmd+C/V/Z ...
+-        if (composing) { [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; }
++        if (composing) { [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; SKTrace(@"chord kc=%d flags=%lx while composing: word written", (int)kc, (unsigned long)f); return SKPassKeyAfterCommit(event); }
+         return NO;
+     }
+     if (shf && navKey) {                                  // Shift+arrows / Home / End: extend the selection in the application
+-        if (composing) { [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; }
++        if (composing) { [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; return SKPassKeyAfterCommit(event); }
+         return NO;
+     }
+     BOOL candKey = (kc >= 123 && kc <= 126) || kc == 116 || kc == 121;     // keys the candidate list uses while composing
+     if (!candKey && (kc == 115 || kc == 119 || kc == 117 || fnKey)) {      // Home, End, forward delete, F-keys, Help ...
+-        if (composing) { [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; }
++        if (composing) { [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; return SKPassKeyAfterCommit(event); }
+         return NO;
+     }
+ 
+@@ -921,14 +965,20 @@
+             case 121: [self movePage:1 client:sender]; return YES;                                           // page down: next page
+             case 123: case 124: {                                                                             // left / right
+                 if (((NSInteger)_cands.count + ODIA_PAGE - 1) / ODIA_PAGE > 1) { [self movePage:(kc == 123 ? -1 : 1) client:sender]; return YES; }
+-                [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; return NO;                   // one page only: take the choice, then move the caret
++                [self commitIndex:_sel client:sender suffix:nil bySelection:NO]; return SKPassKeyAfterCommit(event);   // one page only: take the choice, then move the caret (the key is sent again once the word is in the text)
+             }
+         }
+     }
+ 
+     NSString *s = event.characters;
++    // IMK gives some macOS input-source clients the unshifted "." character here,
++    // even though the physical Shift+period key was pressed. Windows receives the
++    // shifted key directly. Normalize that one physical key before the punctuation
++    // path sees it, so Shift+. always reaches the existing nukta command.
++    if (shf && kc == 47) s = @">";     // macOS virtual key code 47 = period
+     if (s.length != 1) return NO;
+     unichar c = [s characterAtIndex:0];
++    if (c != '>') [self clearNuktaCache];
+ 
+     // "." opens its own choice list: danda, full stop, double danda
+     BOOL dotsOnly = composing && _buf.length && [[_buf stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]] length] == 0;
+@@ -967,7 +1017,17 @@
+     if (letter) {
+         if (!composing) {
+             // stand-alone > acts at once (nukta); z, Z and v open their own choice lists
+-            if (c == '>') { if (![self nuktaBack:sender]) [self insert:NuktaStr() client:sender]; return YES; }
++            if (c == '>') {
++                BOOL changed = [self nuktaBack:sender];
++                if (!changed) changed = [self cachedNuktaBack:sender];
++                [self clearNuktaCache];
++                if (!changed) {
++                    NSString *nuk = NuktaStr();
++                    if (!nuk) return NO;                 // English / IPA: preserve the literal > key
++                    [self insert:nuk client:sender];
++                }
++                return YES;
++            }
+         }
+         [_buf appendString:s]; _sel = 0; _navd = NO; [self refreshClient:sender]; return YES;
+     }
+@@ -984,10 +1044,49 @@
+ }
+ 
+ 
+-// ">" typed after a word was already put in the text: put the nukta on the ଡ / ଢ of the last letter before the caret
+-// (ବଡି> -> ବଡ଼ି, also with a space that was added after the pick). Returns NO when there is no ଡ / ଢ there.
+-static BOOL OdiaMark(unichar c) { c = Nrm(c); return (c >= 0x0B3E && c <= 0x0B44) || c == 0x0B47 || c == 0x0B48 || c == 0x0B4B || c == 0x0B4C || c == 0x0B56 || c == 0x0B57 || c == 0x0B62 || c == 0x0B63 || c == 0x0B3C || (c >= 0x0B01 && c <= 0x0B03) || c == 0x0B4D || c == 0x200C || c == 0x200D; }
+-static BOOL OdiaLet(unichar c) { c = Nrm(c); return (c >= 0x0B05 && c <= 0x0B39) || c == 0x0B5C || c == 0x0B5D || c == 0x0B5F || c == 0x0B60 || c == 0x0B61 || c == 0x0B71; }
++// ">" typed after a word was already put in the text: put that script's nukta on the
++// last eligible D / Dh of the final letter (also with a space added after a pick).
++static BOOL IndicMark(unichar c) { c = Nrm(c); return (c >= 0x0B3E && c <= 0x0B44) || c == 0x0B47 || c == 0x0B48 || c == 0x0B4B || c == 0x0B4C || c == 0x0B56 || c == 0x0B57 || c == 0x0B62 || c == 0x0B63 || c == 0x0B3C || (c >= 0x0B01 && c <= 0x0B03) || c == 0x0B4D || c == 0x200C || c == 0x200D; }
++static BOOL IndicLetter(unichar c) { c = Nrm(c); return (c >= 0x0B05 && c <= 0x0B39) || c == 0x0B5C || c == 0x0B5D || c == 0x0B5F || c == 0x0B60 || c == 0x0B61 || c == 0x0B71; }
++
++// Returns a copy with the matching script's nukta placed on the last eligible D / Dh.
++static NSString *NuktaRewrite(NSString *s) {
++    NSInteger end = (NSInteger)s.length;
++    if (end < 1) return nil;
++    if (end >= 2 && [s characterAtIndex:end - 1] == ' ' && (IndicMark([s characterAtIndex:end - 2]) || IndicLetter([s characterAtIndex:end - 2]))) end--;
++    NSInteger i = end - 1;
++    while (i > 0 && IndicMark([s characterAtIndex:i])) i--;
++    if (i < 0 || !IndicLetter([s characterAtIndex:i])) return nil;
++    NSInteger cs = i;
++    while (cs > 0 && Nrm([s characterAtIndex:cs - 1]) == 0x0B4D) { cs--; if (cs > 0 && IndicLetter([s characterAtIndex:cs - 1])) cs--; else break; }
++    for (NSInteger j = end - 1; j >= cs; j--) {
++        unichar u = [s characterAtIndex:j];
++        if ((Nrm(u) == 0x0B21 || Nrm(u) == 0x0B22) && !(j + 1 < end && Nrm([s characterAtIndex:j + 1]) == 0x0B3C)) {
++            NSMutableString *out = [s mutableCopy];
++            NSString *nuk = NuktaForCharacter(u);
++            if (!nuk) return nil;
++            [out insertString:nuk atIndex:j + 1];
++            return out;
++        }
++    }
++    return nil;
++}
++
++// Some macOS input clients report a caret but refuse attributedSubstringFromRange immediately after a commit.
++// We have just inserted this text ourselves, so while the caret and client are unchanged it is safe to replace it directly.
++- (BOOL)cachedNuktaBack:(id)sender {
++    if (!_lastNuktaText.length || _lastNuktaClient != sender || _lastNuktaCaret == NSNotFound) return NO;
++    id<IMKTextInput> cl = (id<IMKTextInput>)sender;
++    @try {
++        NSRange sr = [cl selectedRange];
++        if (sr.location != _lastNuktaCaret || sr.length != 0 || sr.location < _lastNuktaText.length) return NO;
++        NSString *rewritten = NuktaRewrite(_lastNuktaText);
++        if (!rewritten) return NO;
++        [cl insertText:rewritten replacementRange:NSMakeRange(sr.location - _lastNuktaText.length, _lastNuktaText.length)];
++        return YES;
++    } @catch (NSException *e) { return NO; }
++}
++
+ - (BOOL)nuktaBack:(id)sender {
+     id<IMKTextInput> cl = (id<IMKTextInput>)sender;
+     NSRange sr = [cl selectedRange];
+@@ -997,18 +1096,18 @@
+     NSString *s = [cl attributedSubstringFromRange:back].string;
+     if (s.length != n) return NO;
+     NSInteger end = (NSInteger)n; BOOL space = NO;
+-    if (end >= 2 && [s characterAtIndex:end - 1] == ' ' && (OdiaMark([s characterAtIndex:end - 2]) || OdiaLet([s characterAtIndex:end - 2]))) { space = YES; end--; }
++    if (end >= 2 && [s characterAtIndex:end - 1] == ' ' && (IndicMark([s characterAtIndex:end - 2]) || IndicLetter([s characterAtIndex:end - 2]))) { space = YES; end--; }
+     NSInteger i = end - 1;
+-    while (i > 0 && OdiaMark([s characterAtIndex:i])) i--;
+-    if (i < 0 || !OdiaLet([s characterAtIndex:i])) return NO;
++    while (i > 0 && IndicMark([s characterAtIndex:i])) i--;
++    if (i < 0 || !IndicLetter([s characterAtIndex:i])) return NO;
+     NSInteger cs = i;
+-    while (cs > 0 && Nrm([s characterAtIndex:cs - 1]) == 0x0B4D) { cs--; if (cs > 0 && OdiaLet([s characterAtIndex:cs - 1])) cs--; else break; }
+-    NSInteger at = -1; NSString *nuk = NuktaStr();
++    while (cs > 0 && Nrm([s characterAtIndex:cs - 1]) == 0x0B4D) { cs--; if (cs > 0 && IndicLetter([s characterAtIndex:cs - 1])) cs--; else break; }
++    NSInteger at = -1; NSString *nuk = nil;
+     for (NSInteger j = end - 1; j >= cs; j--) {
+         unichar u = [s characterAtIndex:j];
+-        if ((Nrm(u) == 0x0B21 || Nrm(u) == 0x0B22) && !(j + 1 < end && Nrm([s characterAtIndex:j + 1]) == 0x0B3C)) { at = j + 1; nuk = [NSString stringWithFormat:@"%C", (unichar)(0x0B3C + (u - Nrm(u)))]; break; }
++        if ((Nrm(u) == 0x0B21 || Nrm(u) == 0x0B22) && !(j + 1 < end && Nrm([s characterAtIndex:j + 1]) == 0x0B3C)) { at = j + 1; nuk = NuktaForCharacter(u); break; }
+     }
+-    if (at < 0) return NO;
++    if (at < 0 || !nuk) return NO;
+     NSMutableString *seg = [[s substringWithRange:NSMakeRange(cs, end - cs)] mutableCopy];
+     [seg insertString:nuk atIndex:at - cs];
+     if (space) [seg appendString:@" "];
+diff -ruN pa/src/SKEnglishTyper.mm pb/src/SKEnglishTyper.mm
+--- a/src/SKEnglishTyper.mm	2026-11-13 21:38:37.346016772 +0000
++++ b/src/SKEnglishTyper.mm	2026-11-13 21:38:37.347634859 +0000
+@@ -1,5 +1,6 @@
+ #import "SKEnglishTyper.h"
+ #import "SKPersonal.h"
++#import "SKKeyPass.h"
+ #include "tipcore.h"
+ #include <memory>
+ #include <string>
+@@ -18,6 +19,7 @@
+ class MacDoc : public sk::Doc {
+ public:
+     id client = nil;
++    bool wrote = false;                 // text was written into the program during the key press being handled (see SKKeyPass.h)
+     sk::ustr Before(int n) override {
+         if (!client || n <= 0) return sk::ustr();
+         NSRange sr = [client selectedRange];
+@@ -31,9 +33,10 @@
+         NSAttributedString *m = [[NSAttributedString alloc] initWithString:t attributes:@{ NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle) }];
+         [client setMarkedText:m selectionRange:NSMakeRange(t.length, 0) replacementRange:NSMakeRange(NSNotFound, NSNotFound)];
+     }
+-    void Commit(const sk::ustr &s) override { [client insertText:NS16(s) replacementRange:NSMakeRange(NSNotFound, NSNotFound)]; }
++    void Commit(const sk::ustr &s) override { wrote = true; [client insertText:NS16(s) replacementRange:NSMakeRange(NSNotFound, NSNotFound)]; }
+     void EndEmpty() override { [client setMarkedText:@"" selectionRange:NSMakeRange(0, 0) replacementRange:NSMakeRange(NSNotFound, NSNotFound)]; }
+     void ReplaceBefore(int drop, const sk::ustr &s) override {
++        wrote = true;
+         NSRange sr = [client selectedRange];
+         NSRange r = NSMakeRange(NSNotFound, NSNotFound);
+         if (drop > 0 && sr.location != NSNotFound && sr.location >= (NSUInteger)drop) r = NSMakeRange(sr.location - (NSUInteger)drop, (NSUInteger)drop);
+@@ -133,7 +136,13 @@
+     k.win = (f & NSEventModifierFlagCommand) != 0;
+     // a key that is neither a named key nor a character (an F key, Caps Lock ...): the word is finished and the key goes on
+     if (k.vk == 0x41 && k.ch == 0) k.vk = 0x70;
+-    return _core->OnKey(k) ? YES : NO;
++    // A word that is finished by a shortcut or a caret key (Cmd+A, Cmd+C, arrows, Home/End, Enter, Tab ...) is written into the program and the key
++    // then belongs to the program. Answering NO in the same key press made some programs (Chrome, Google Sheets ...) drop the key, so the first
++    // Cmd+A only finished the word. SKPassKeyAfterCommit keeps the key back and sends it again once the word is in the text.
++    _doc.wrote = false;
++    BOOL used = _core->OnKey(k) ? YES : NO;
++    if (!used && _doc.wrote) return SKPassKeyAfterCommit(e);
++    return used;
+ }
+ - (void)finishWithClient:(id)client {
+     if (!_core->Composing() && !_core->NextShown()) return;

@@ -204,9 +204,31 @@ def mac(m):
     sub(b, 'for f in main OdiaController SKEngine OSKPanel SuggestBar SKLearn SKPersonal; do', 'for f in main OdiaController SKEngine OSKPanel PalettePanel SuggestBar SKLearn SKPersonal; do', 'OSKPanel PalettePanel')
     sub(b, 'cp src/skel.dat "$BUILD/Contents/Resources/skel.dat"', 'cp html/palette.html html/sk-palette.js html/sk-palette-data.js "$BUILD/Contents/Resources/"       # the Unicode symbols palette (Option+comma)\ncp src/skel.dat "$BUILD/Contents/Resources/skel.dat"', 'html/palette.html')
 
+def mac_marks(m):
+    """Mac typing fixes (nukta, Cmd/Ctrl shortcuts, lone m/h and ~ marks, boxes hidden when the input source changes), laid over the palette result.
+    Additive and never fatal: if mac-marks/ is absent or the patch no longer fits the Mac sources, the build goes on without it and says so."""
+    import subprocess
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mac-marks')
+    pf = os.path.join(d, 'mac-marks.patch')
+    if not os.path.isfile(pf):
+        print('overlay_palette: no mac-marks/ here - Mac typing fixes skipped'); return
+    try:
+        base = ['patch', '-p1', '-s', '-i', pf]
+        chk = subprocess.run(base + ['--dry-run'], cwd=m, capture_output=True, text=True)
+        if chk.returncode != 0:
+            print('::warning title=Mac typing fixes NOT applied::mac-marks.patch no longer fits the Mac sources'); print(chk.stdout[-800:], chk.stderr[-400:]); return
+        ap = subprocess.run(base, cwd=m, capture_output=True, text=True)
+        if ap.returncode != 0:
+            print('::warning title=Mac typing fixes failed::', ap.stdout[-800:], ap.stderr[-400:]); return
+        for f in ('SKKeyPass.m', 'SKKeyPass.h'): shutil.copyfile(os.path.join(d, f), os.path.join(m, 'src', f))
+        print('overlay_palette: Mac typing fixes applied')
+    except Exception as e:
+        print('::warning title=Mac typing fixes skipped::', e)
+
 if __name__ == '__main__':
     if len(sys.argv) >= 3 and sys.argv[1] == '--mac':
         mac(sys.argv[2]); print('overlay_palette: Mac palette applied')
+        mac_marks(sys.argv[2])
     elif len(sys.argv) == 2:
         windows(sys.argv[1]); android(sys.argv[1]); ios(sys.argv[1]); print('overlay_palette: palette applied to', sys.argv[1])
     else:
